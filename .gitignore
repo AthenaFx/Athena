@@ -1,0 +1,5 @@
+.idea
+project.lock.json
+src/packages
+obj
+bin
