@@ -7,7 +7,7 @@ using Athena.Web.Routing;
 
 namespace Athena.Web
 {
-    public class WebApplicationPlugin : AthenaPlugin
+    public class WebAppPlugin : AthenaPlugin
     {
         public Task Start(AthenaContext context)
         {

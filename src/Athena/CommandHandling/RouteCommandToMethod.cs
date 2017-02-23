@@ -4,7 +4,6 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
 using Athena.Routing;
-using Microsoft.Extensions.DependencyModel;
 
 namespace Athena.CommandHandling
 {
@@ -23,27 +22,13 @@ namespace Athena.CommandHandling
 
         public static RouteCommandToMethod New(Func<MethodInfo, bool> filter)
         {
-            var methods = GetReferencingAssemblies(typeof(RouteCommandToMethod).GetTypeInfo().Assembly.FullName)
+            var methods = AthenaApplications.ApplicationAssemblies
                 .SelectMany(x => x.GetTypes())
                 .SelectMany(x => x.GetMethods(BindingFlags.Instance | BindingFlags.Public))
                 .Where(filter)
                 .ToList();
 
             return new RouteCommandToMethod(new ReadOnlyCollection<MethodInfo>(methods));
-        }
-
-        private static IEnumerable<Assembly> GetReferencingAssemblies(string assemblyName)
-        {
-            var dependencies = DependencyContext.Default.RuntimeLibraries;
-
-            return (from library in dependencies where IsCandidateLibrary(library, assemblyName)
-                select Assembly.Load(new AssemblyName(library.Name))).ToList();
-        }
-
-        private static bool IsCandidateLibrary(Library library, string assemblyName)
-        {
-            return library.Name == assemblyName
-                   || library.Dependencies.Any(d => d.Name.StartsWith(assemblyName));
         }
     }
 }

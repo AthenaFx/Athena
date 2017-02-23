@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System.Reflection;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Owin;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,7 +17,7 @@ namespace Athena.Web.Sample
         {
             loggerFactory.AddConsole();
 
-            var athenaApplication = AthenaApplications.Bootsrap().Result;
+            var athenaApplication = AthenaApplications.Bootsrap(GetType().GetTypeInfo().Assembly).Result;
 
             app.Run(async context =>
             {

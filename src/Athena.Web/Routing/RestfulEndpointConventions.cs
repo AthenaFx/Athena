@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
-using Microsoft.Extensions.DependencyModel;
 
 namespace Athena.Web.Routing
 {
@@ -23,11 +22,7 @@ namespace Athena.Web.Routing
             var availableAssemblies = assemblies.ToList();
 
             if (!availableAssemblies.Any())
-            {
-                availableAssemblies =
-                    GetReferencingAssemblies(typeof(RestfulEndpointConventions).GetTypeInfo().Assembly.GetName().Name)
-                        .ToList();
-            }
+                availableAssemblies = AthenaApplications.ApplicationAssemblies.ToList();
 
             var availableMethods = availableAssemblies
                 .SelectMany(x => x.GetTypes())
@@ -82,20 +77,6 @@ namespace Athena.Web.Routing
             }
 
             return result;
-        }
-
-        private static IEnumerable<Assembly> GetReferencingAssemblies(string assemblyName)
-        {
-            var dependencies = DependencyContext.Default.RuntimeLibraries;
-
-            return (from library in dependencies where IsCandidateLibrary(library, assemblyName)
-                select Assembly.Load(new AssemblyName(library.Name))).ToList();
-        }
-
-        private static bool IsCandidateLibrary(Library library, string assemblyName)
-        {
-            return library.Name == assemblyName
-                   || library.Dependencies.Any(d => d.Name.StartsWith(assemblyName));
         }
     }
 }

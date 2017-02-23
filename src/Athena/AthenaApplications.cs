@@ -14,6 +14,8 @@ namespace Athena
     {
         private static readonly IDictionary<string, AppFunc> Applications = new ConcurrentDictionary<string, AppFunc>();
 
+        public static IReadOnlyCollection<Assembly> ApplicationAssemblies { get; private set; }
+
         private AthenaApplications()
         {
 
@@ -30,8 +32,10 @@ namespace Athena
                 await Applications[application](environment);
         }
 
-        public static async Task<AthenaContext> Bootsrap()
+        public static async Task<AthenaContext> Bootsrap(params Assembly[] applicationAssemblies)
         {
+            ApplicationAssemblies = applicationAssemblies;
+
             var pluginType = typeof(AthenaPlugin);
 
             var plugins = GetReferencingAssemblies(pluginType.GetTypeInfo().Assembly.GetName().Name)
