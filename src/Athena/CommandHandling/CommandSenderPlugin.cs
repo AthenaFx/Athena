@@ -25,7 +25,10 @@ namespace Athena.CommandHandling
             }.AsReadOnly();
 
             context.DefineApplication("commandhandler", AppFunctions
-                .StartWith(next => new FindCorrectRoute(next, routers).Invoke)
+                .StartWith(next => new FindCorrectRoute(next, routers, x =>
+                {
+                    throw new CommandHandlerNotFoundException(x.Get<object>("command").GetType());
+                }).Invoke)
                 .Then(next => new ExecuteEndpoint(next, executors).Invoke)
                 .Build());
 

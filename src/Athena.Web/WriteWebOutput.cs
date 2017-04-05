@@ -12,16 +12,17 @@ namespace Athena.Web
     {
         private readonly AppFunc _next;
         private readonly IReadOnlyCollection<ResultParser> _parsers;
+        private readonly FindStatusCodeFromResult _findStatusCodeFromResult;
 
-        public WriteWebOutput(AppFunc next, IReadOnlyCollection<ResultParser> parsers)
+        public WriteWebOutput(AppFunc next, IReadOnlyCollection<ResultParser> parsers, FindStatusCodeFromResult findStatusCodeFromResult)
         {
             _next = next;
             _parsers = parsers;
+            _findStatusCodeFromResult = findStatusCodeFromResult;
         }
 
         public async Task Invoke(IDictionary<string, object> environment)
         {
-            var outputResults = environment.Get("endpointresults", new List<EndpointExecutionResult>());
             var acceptedMediaTypes = environment.GetRequest().Headers.GetAcceptedMediaTypes().ToList();
 
             var parser = _parsers
@@ -47,16 +48,25 @@ namespace Athena.Web
 
             if (parser == null)
             {
-                outputResults.Clear();
+                environment.GetResponse().StatusCode = 406;
 
                 return;
             }
 
-            foreach (var result in outputResults.Where(x => x.Success && x.Result != null))
-            {
-                var outputResult = await parser.Parse(result.Result);
+            await _next(environment);
 
+            var outputResults = environment.Get("endpointresults", new List<EndpointExecutionResult>());
+
+            foreach (var result in outputResults.Where(x => x.Success))
+            {
                 var response = environment.GetResponse();
+
+                response.StatusCode = _findStatusCodeFromResult.FindFor(result.Result);
+
+                if(result.Result == null)
+                    continue;
+
+                var outputResult = await parser.Parse(result.Result);
 
                 response.Headers.ContentType = outputResult.ContentType;
 

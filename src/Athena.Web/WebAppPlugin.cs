@@ -32,12 +32,11 @@ namespace Athena.Web
             };
 
             context.DefineApplication("web", AppFunctions
-                .StartWith(next => new SetCorrectStatusCode(next).Invoke)
-                .Then(next => new GzipOutput(next).Invoke)
+                .StartWith(next => new GzipOutput(next).Invoke)
                 .Then(next => new HandleExceptions(next).Invoke)
-                .Then(next => new FindCorrectRoute(next, routers).Invoke)
+                .Then(next => new FindCorrectRoute(next, routers, x => x.GetResponse().StatusCode = 404).Invoke)
+                .Then(next => new WriteWebOutput(next, outputParsers, new FindStatusCodeFromResultWithStatusCode()).Invoke)
                 .Then(next => new ExecuteEndpoint(next, executors).Invoke)
-                .Then(next => new WriteWebOutput(next, outputParsers).Invoke)
                 .Build());
 
             return Task.CompletedTask;
