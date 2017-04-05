@@ -26,13 +26,14 @@ namespace Athena.Web
                 })
             }.AsReadOnly();
 
-            var outputParsers = new List<Tuple<Func<IDictionary<string, object>, bool>, ResultParser>>
+            var outputParsers = new List<ResultParser>
             {
-                new Tuple<Func<IDictionary<string, object>, bool>, ResultParser>(ParseOutputAsJson.Matches, new ParseOutputAsJson())
+                new ParseOutputAsJson()
             };
 
             context.DefineApplication("web", AppFunctions
-                .StartWith(next => new GzipOutput(next).Invoke)
+                .StartWith(next => new SetCorrectStatusCode(next).Invoke)
+                .Then(next => new GzipOutput(next).Invoke)
                 .Then(next => new HandleExceptions(next).Invoke)
                 .Then(next => new FindCorrectRoute(next, routers).Invoke)
                 .Then(next => new ExecuteEndpoint(next, executors).Invoke)

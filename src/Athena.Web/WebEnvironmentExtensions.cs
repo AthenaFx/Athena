@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace Athena.Web
 {
-    internal static class WebEnvironmentExtensions
+    public static class WebEnvironmentExtensions
     {
         public static WebRequest GetRequest(this IDictionary<string, object> environment)
         {
@@ -83,7 +83,7 @@ namespace Athena.Web
             internal const string Vary = "Vary";
         }
 
-        internal class WebRequest
+        public class WebRequest
         {
             private readonly IDictionary<string, object> _environment;
 
@@ -809,7 +809,7 @@ namespace Athena.Web
             }
         }
 
-        internal class WebResponse
+        public class WebResponse
         {
             private readonly IDictionary<string, object> _environment;
 

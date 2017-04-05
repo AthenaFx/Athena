@@ -10,9 +10,9 @@ namespace Athena.Web
     public class WriteWebOutput
     {
         private readonly AppFunc _next;
-        private readonly IReadOnlyCollection<Tuple<Func<IDictionary<string, object>, bool>, ResultParser>> _parsers;
+        private readonly IReadOnlyCollection<ResultParser> _parsers;
 
-        public WriteWebOutput(AppFunc next, IReadOnlyCollection<Tuple<Func<IDictionary<string, object>, bool>, ResultParser>> parsers)
+        public WriteWebOutput(AppFunc next, IReadOnlyCollection<ResultParser> parsers)
         {
             _next = next;
             _parsers = parsers;
@@ -21,15 +21,38 @@ namespace Athena.Web
         public async Task Invoke(IDictionary<string, object> environment)
         {
             var outputResults = environment.Get("endpointresults", new List<object>());
+            var acceptedMediaTypes = environment.GetRequest().Headers.GetAcceptedMediaTypes().ToList();
 
-            var parser = _parsers.FirstOrDefault(x => x.Item1(environment));
+            var parser = _parsers
+                .Select(x => new
+                {
+                    Parser = x,
+                    MatchResult = x
+                        .MatchingMediaTypes
+                        .SelectMany(y => acceptedMediaTypes.Select(z => new
+                        {
+                            MediaType = z,
+                            IsMatch = z.Matches(y)
+                        }))
+                        .Where(y => y.IsMatch)
+                        .OrderBy(y => y.MediaType.GetPriority())
+                        .FirstOrDefault()
+                })
+                .Where(x => x.MatchResult != null)
+                .OrderBy(x => x.MatchResult.MediaType.GetPriority())
+                .Select(x => x.Parser)
+                .FirstOrDefault();
 
             if (parser == null)
+            {
+                outputResults.Clear();
+
                 return;
+            }
 
             foreach (var result in outputResults)
             {
-                var outputResult = await parser.Item2.Parse(result);
+                var outputResult = await parser.Parse(result);
 
                 var response = environment.GetResponse();
 
