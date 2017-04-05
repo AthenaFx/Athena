@@ -33,14 +33,15 @@ namespace Athena.Web
                         .SelectMany(y => acceptedMediaTypes.Select(z => new
                         {
                             MediaType = z,
-                            IsMatch = z.Matches(y)
+                            IsMatch = z.Matches(y),
+                            Priority = z.GetPriority()
                         }))
                         .Where(y => y.IsMatch)
-                        .OrderBy(y => y.MediaType.GetPriority())
+                        .OrderBy(y => y.Priority)
                         .FirstOrDefault()
                 })
                 .Where(x => x.MatchResult != null)
-                .OrderBy(x => x.MatchResult.MediaType.GetPriority())
+                .OrderBy(x => x.MatchResult.Priority)
                 .Select(x => x.Parser)
                 .FirstOrDefault();
 
