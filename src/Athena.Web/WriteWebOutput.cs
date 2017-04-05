@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Athena.Routing;
 
 namespace Athena.Web
 {
@@ -20,7 +21,7 @@ namespace Athena.Web
 
         public async Task Invoke(IDictionary<string, object> environment)
         {
-            var outputResults = environment.Get("endpointresults", new List<object>());
+            var outputResults = environment.Get("endpointresults", new List<EndpointExecutionResult>());
             var acceptedMediaTypes = environment.GetRequest().Headers.GetAcceptedMediaTypes().ToList();
 
             var parser = _parsers
@@ -50,9 +51,9 @@ namespace Athena.Web
                 return;
             }
 
-            foreach (var result in outputResults)
+            foreach (var result in outputResults.Where(x => x.Success && x.Result != null))
             {
-                var outputResult = await parser.Parse(result);
+                var outputResult = await parser.Parse(result.Result);
 
                 var response = environment.GetResponse();
 

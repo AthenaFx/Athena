@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Athena.Routing;
 
 namespace Athena.Web
 {
@@ -29,9 +30,9 @@ namespace Athena.Web
                 return;
             }
 
-            var outputResults = environment.Get("endpointresults", new List<object>());
+            var outputResults = environment.Get("endpointresults", new List<EndpointExecutionResult>());
 
-            if (!outputResults.Any())
+            if (!outputResults.Any(x => x.Success))
             {
                 environment.GetResponse().StatusCode = 404;
 

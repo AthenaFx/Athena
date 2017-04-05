@@ -28,14 +28,13 @@ namespace Athena.Routing
                 return;
             }
 
-            var results = new List<object>();
+            var results = new List<EndpointExecutionResult>();
 
             foreach (var executor in _endpointExecutors)
             {
                 var result = await executor.Execute(routeResult.RouteTo, environment);
 
-                if(result.Success && result.Result != null)
-                    results.Add(result.Result);
+                results.Add(result);
             }
 
             environment["endpointresults"] = results;
