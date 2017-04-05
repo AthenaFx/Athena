@@ -32,11 +32,11 @@ namespace Athena.Web
             };
 
             context.DefineApplication("web", AppFunctions
-                .StartWith<GzipOutput>()
-                .Then<HandleExceptions>()
-                .Then<FindCorrectRoute>(routers)
-                .Then<ExecuteEndpoint>(executors)
-                .Then<WriteWebOutput>(outputParsers)
+                .StartWith(next => new GzipOutput(next).Invoke)
+                .Then(next => new HandleExceptions(next).Invoke)
+                .Then(next => new FindCorrectRoute(next, routers).Invoke)
+                .Then(next => new ExecuteEndpoint(next, executors).Invoke)
+                .Then(next => new WriteWebOutput(next, outputParsers).Invoke)
                 .Build());
 
             return Task.CompletedTask;

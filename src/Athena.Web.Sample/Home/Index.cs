@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Athena.Web.Sample.Home
+﻿namespace Athena.Web.Sample.Home
 {
     public class Index
     {

@@ -25,8 +25,8 @@ namespace Athena.CommandHandling
             }.AsReadOnly();
 
             context.DefineApplication("commandhandler", AppFunctions
-                .StartWith<FindCorrectRoute>(routers)
-                .Then<ExecuteEndpoint>(executors)
+                .StartWith(next => new FindCorrectRoute(next, routers).Invoke)
+                .Then(next => new ExecuteEndpoint(next, executors).Invoke)
                 .Build());
 
             return Task.CompletedTask;
