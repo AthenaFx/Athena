@@ -15,16 +15,21 @@ namespace Athena.Web
             var routers = new List<EnvironmentRouter>
             {
                 new UrlPatternRouter(routes, new DefaultRoutePatternMatcher())
-            }.AsReadOnly();
+            };
 
             var binders = new List<EnvironmentDataBinder>
             {
                 new WebDataBinder(ModelBinders.GetAll())
-            }.AsReadOnly();
+            };
 
             var outputParsers = new List<ResultParser>
             {
                 new ParseOutputAsJson()
+            };
+
+            var fileHandlers = new List<StaticFileReader>
+            {
+                new ReadStaticFilesFromFileSystem()
             };
 
             context.DefineApplication("web", AppFunctions
@@ -36,6 +41,7 @@ namespace Athena.Web
 
                     return Task.CompletedTask;
                 }).Invoke)
+                .Then(next => new HandleStaticFiles(next, fileHandlers).Invoke)
                 .Then(next => new FindCorrectRoute(next, routers, x => x.GetResponse().StatusCode = 404).Invoke)
                 .Then(next => new HandleOutputParsing(next, outputParsers, new FindStatusCodeFromResultWithStatusCode()).Invoke)
                 .Then(next => new ExecuteEndpoint(next, binders, (validationResult, environment) =>
