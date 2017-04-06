@@ -1,10 +1,11 @@
 ﻿using System.Collections.Generic;
+using System.Reflection;
 
 namespace Athena.Routing
 {
     public class RouterResult
     {
-        public RouterResult(bool success, object routeTo, IReadOnlyDictionary<string, object> parameters)
+        public RouterResult(bool success, MethodInfo routeTo, IReadOnlyDictionary<string, object> parameters)
         {
             Success = success;
             RouteTo = routeTo;
@@ -12,7 +13,7 @@ namespace Athena.Routing
         }
 
         public bool Success { get; }
-        public object RouteTo { get; }
+        public MethodInfo RouteTo { get; }
         public IReadOnlyDictionary<string, object> Parameters { get; }
     }
 }

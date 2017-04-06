@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Athena.Routing;
@@ -22,7 +23,8 @@ namespace Athena.Web.Routing
             var httpMethod = environment.GetRequest().Method.ToUpper();
 
             var route = _routes
-                .Where(x => !x.AvailableHttpMethods.Any() || x.AvailableHttpMethods.Contains(httpMethod))
+                .Where(x => !x.AvailableHttpMethods.Any()
+                            || x.AvailableHttpMethods.Any(y => y.Equals(httpMethod, StringComparison.OrdinalIgnoreCase)))
                 .Select(x => new
                 {
                     Route = x,
@@ -30,7 +32,9 @@ namespace Athena.Web.Routing
                 })
                 .FirstOrDefault(x => x.Match.IsMatch);
 
-            return Task.FromResult(route == null ? new RouterResult(false, null, new Dictionary<string, object>()) : new RouterResult(true, route.Route.Destination, route.Match.Parameters));
+            return Task.FromResult(route == null
+                ? new RouterResult(false, null, new Dictionary<string, object>())
+                : new RouterResult(true, route.Route.Destination, route.Match.Parameters));
         }
     }
 }

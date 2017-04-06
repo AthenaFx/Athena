@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Athena.Routing;
 using Athena.Web.ModelBinding;
@@ -18,12 +17,9 @@ namespace Athena.Web
                 new UrlPatternRouter(routes, new DefaultRoutePatternMatcher())
             }.AsReadOnly();
 
-            var executors = new List<EndpointExecutor>
+            var binders = new List<EnvironmentDataBinder>
             {
-                new ExecuteMethodEndpoint(new List<EnvironmentDataBinder>
-                {
-                    new WebDataBinder(ModelBinders.GetAll())
-                })
+                new WebDataBinder(ModelBinders.GetAll())
             }.AsReadOnly();
 
             var outputParsers = new List<ResultParser>
@@ -32,11 +28,23 @@ namespace Athena.Web
             };
 
             context.DefineApplication("web", AppFunctions
-                .StartWith(next => new GzipOutput(next).Invoke)
-                .Then(next => new HandleExceptions(next).Invoke)
+                .StartWith(next => new MakeSureUniqueUrl(next).Invoke)
+                .Then(next => new GzipOutput(next).Invoke)
+                .Then(next => new HandleExceptions(next, (exception, environment) =>
+                {
+                    environment.GetResponse().StatusCode = 500;
+
+                    return Task.CompletedTask;
+                }).Invoke)
                 .Then(next => new FindCorrectRoute(next, routers, x => x.GetResponse().StatusCode = 404).Invoke)
-                .Then(next => new WriteWebOutput(next, outputParsers, new FindStatusCodeFromResultWithStatusCode()).Invoke)
-                .Then(next => new ExecuteEndpoint(next, executors).Invoke)
+                .Then(next => new HandleOutputParsing(next, outputParsers, new FindStatusCodeFromResultWithStatusCode()).Invoke)
+                .Then(next => new ExecuteEndpoint(next, binders, (validationResult, environment) =>
+                    {
+                        environment.GetResponse().StatusCode = validationResult.ValidationStatus ?? 422;
+
+                        return Task.CompletedTask;
+                    }
+                ).Invoke)
                 .Build());
 
             return Task.CompletedTask;

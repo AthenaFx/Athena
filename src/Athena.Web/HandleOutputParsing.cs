@@ -8,13 +8,14 @@ namespace Athena.Web
 {
     using AppFunc = Func<IDictionary<string, object>, Task>;
 
-    public class WriteWebOutput
+    public class HandleOutputParsing
     {
         private readonly AppFunc _next;
         private readonly IReadOnlyCollection<ResultParser> _parsers;
         private readonly FindStatusCodeFromResult _findStatusCodeFromResult;
 
-        public WriteWebOutput(AppFunc next, IReadOnlyCollection<ResultParser> parsers, FindStatusCodeFromResult findStatusCodeFromResult)
+        public HandleOutputParsing(AppFunc next, IReadOnlyCollection<ResultParser> parsers,
+            FindStatusCodeFromResult findStatusCodeFromResult)
         {
             _next = next;
             _parsers = parsers;
@@ -55,26 +56,27 @@ namespace Athena.Web
 
             await _next(environment);
 
-            var outputResults = environment.Get("endpointresults", new List<EndpointExecutionResult>());
+            var result = environment.Get<EndpointExecutionResult>("endpointresults");
 
-            foreach (var result in outputResults.Where(x => x.Success))
-            {
-                var response = environment.GetResponse();
+            if (result == null)
+                return;
 
-                response.StatusCode = _findStatusCodeFromResult.FindFor(result.Result);
+            var response = environment.GetResponse();
 
-                if(result.Result == null)
-                    continue;
+            response.StatusCode = _findStatusCodeFromResult.FindFor(result.Result);
 
-                var outputResult = await parser.Parse(result.Result);
+            if (result.Result == null)
+                return;
 
-                response.Headers.ContentType = outputResult.ContentType;
+            var outputResult = await parser.Parse(result.Result);
 
-                if (outputResult.Body == null) continue;
+            response.Headers.ContentType = outputResult.ContentType;
 
-                using (outputResult.Body)
-                    await response.Write(outputResult.Body).ConfigureAwait(false);
-            }
+            if (outputResult.Body == null)
+                return;
+
+            using (outputResult.Body)
+                await response.Write(outputResult.Body).ConfigureAwait(false);
         }
     }
 }

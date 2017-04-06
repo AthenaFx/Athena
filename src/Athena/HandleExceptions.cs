@@ -10,13 +10,15 @@ namespace Athena
     public class HandleExceptions
     {
         private readonly AppFunc _next;
+        private readonly Func<Exception, IDictionary<string, object>, Task> _onError;
 
-        public HandleExceptions(AppFunc next)
+        public HandleExceptions(AppFunc next, Func<Exception, IDictionary<string, object>, Task> onError = null)
         {
             if (next == null)
                 throw new ArgumentNullException(nameof(next));
 
             _next = next;
+            _onError = onError ?? ((x, y) => Task.CompletedTask);
         }
 
         public async Task Invoke(IDictionary<string, object> environment)
@@ -28,6 +30,8 @@ namespace Athena
             catch (Exception ex)
             {
                 environment["exception"] = ex;
+
+                await _onError(ex, environment);
 
                 Logger.Write(LogLevel.Error, $"Exception while executing application: {environment.GetCurrentApplication()}", ex);
             }

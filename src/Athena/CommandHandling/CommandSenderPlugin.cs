@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Athena.Routing;
 
@@ -13,15 +12,12 @@ namespace Athena.CommandHandling
             {
                 RouteCommandToMethod.New(x => x.Name == "Handle"
                                               && (x.ReturnType == typeof(void) || x.ReturnType == typeof(Task))
-                                              && x.GetParameters().Any())
+                                              && x.GetParameters().Length == 1)
             }.AsReadOnly();
 
-            var executors = new List<EndpointExecutor>
+            var binders = new List<EnvironmentDataBinder>
             {
-                new ExecuteMethodEndpoint(new List<EnvironmentDataBinder>
-                {
-                    new CommandDataBinder()
-                })
+                new CommandDataBinder()
             }.AsReadOnly();
 
             context.DefineApplication("commandhandler", AppFunctions
@@ -29,7 +25,7 @@ namespace Athena.CommandHandling
                 {
                     throw new CommandHandlerNotFoundException(x.Get<object>("command").GetType());
                 }).Invoke)
-                .Then(next => new ExecuteEndpoint(next, executors).Invoke)
+                .Then(next => new ExecuteEndpoint(next, binders).Invoke)
                 .Build());
 
             return Task.CompletedTask;
