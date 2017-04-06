@@ -28,8 +28,8 @@ namespace Athena.Web
             };
 
             context.DefineApplication("web", AppFunctions
-                .StartWith(next => new MakeSureUniqueUrl(next).Invoke)
-                .Then(next => new GzipOutput(next).Invoke)
+                .StartWith(next => new HandleOutputCache(next).Invoke)
+                .Then(next => new MakeSureUrlIsUnique(next).Invoke)
                 .Then(next => new HandleExceptions(next, (exception, environment) =>
                 {
                     environment.GetResponse().StatusCode = 500;

@@ -6,11 +6,11 @@ namespace Athena.Web
 {
     using AppFunc = Func<IDictionary<string, object>, Task>;
 
-    public class MakeSureUniqueUrl
+    public class MakeSureUrlIsUnique
     {
         private readonly AppFunc _next;
 
-        public MakeSureUniqueUrl(AppFunc next)
+        public MakeSureUrlIsUnique(AppFunc next)
         {
             _next = next;
         }
