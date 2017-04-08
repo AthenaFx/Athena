@@ -32,7 +32,11 @@ namespace Athena.Web
                 environment["endpointresults"] = new EndpointExecutionResult(true,
                     new CachedFileResult(readResult.CacheData));
 
-                await environment.GetResponse().Write(readResult.Read()).ConfigureAwait(false);
+                var response = environment.GetResponse();
+
+                await response.Write(readResult.Read()).ConfigureAwait(false);
+
+                response.Headers.ContentType = readResult.ContentType;
 
                 return;
             }

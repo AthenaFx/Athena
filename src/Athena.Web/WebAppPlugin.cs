@@ -29,7 +29,7 @@ namespace Athena.Web
 
             var fileHandlers = new List<StaticFileReader>
             {
-                new ReadStaticFilesFromFileSystem()
+                new ReadStaticFilesFromFileSystem("index.html", "index.htm")
             };
 
             context.DefineApplication("web", AppFunctions
