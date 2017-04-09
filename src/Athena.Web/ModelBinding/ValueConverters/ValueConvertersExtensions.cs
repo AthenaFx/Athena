@@ -27,7 +27,7 @@ namespace Athena.Web.ModelBinding.ValueConverters
             var result = converter.Convert(destinationType, value);
 
             Logger.Write(LogLevel.Debug,
-                $"Converted value: \"{value ?? ""}\" to type: {destinationType?.Name ?? "null"} using converted: {converter.GetType().Name} with result: Success = {result.Success}.");
+                $"Converted value: \"{value ?? ""}\" to type: {destinationType?.Name ?? "null"} using converted: {converter.GetType().Name} with result: IsValid = {result.Success}.");
 
             return result;
         }

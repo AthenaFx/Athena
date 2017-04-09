@@ -22,7 +22,7 @@ namespace Athena.Web.ModelBinding.PropertyBinders
 
             var result = await binder.Bind(instance, propertyInfo, bindingContext).ConfigureAwait(false);
 
-            Logger.Write(LogLevel.Debug, $"Finished binding property: {propertyInfo.Name} on: {propertyInfo.DeclaringType?.Name} using: {binder} with result: Success = {result}.");
+            Logger.Write(LogLevel.Debug, $"Finished binding property: {propertyInfo.Name} on: {propertyInfo.DeclaringType?.Name} using: {binder} with result: IsValid = {result}.");
 
             return result;
         }

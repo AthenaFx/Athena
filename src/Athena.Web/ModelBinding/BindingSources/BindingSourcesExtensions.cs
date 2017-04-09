@@ -11,7 +11,7 @@ namespace Athena.Web.ModelBinding.BindingSources
         {
             var result = (await GetSourcesContainingKey(bindingSources, key.ToLower(), environment).ConfigureAwait(false)).Any();
 
-            Logger.Write(LogLevel.Debug, $"Searched for binding key: {key} with result: Success = {result}.");
+            Logger.Write(LogLevel.Debug, $"Searched for binding key: {key} with result: IsValid = {result}.");
 
             return result;
         }

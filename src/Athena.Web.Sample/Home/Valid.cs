@@ -1,6 +1,4 @@
 ﻿using System.Threading.Tasks;
-using Athena.Resources;
-using Athena.Routing;
 
 namespace Athena.Web.Sample.Home
 {
@@ -9,11 +7,6 @@ namespace Athena.Web.Sample.Home
         public Task<ValidGetResult> Get(ValidGetInput input)
         {
             return Task.FromResult(new ValidGetResult($"Hi {input.Slug}"));
-        }
-
-        public Task<EndpointValidationResult> ValidateGet(ValidGetInput input)
-        {
-            return Task.FromResult(new EndpointValidationResult());
         }
     }
 

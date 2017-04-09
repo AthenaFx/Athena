@@ -24,7 +24,7 @@ namespace Athena.Web.ModelBinding
 
             var result = await binder.Bind(type, bindingContext).ConfigureAwait(false);
 
-            Logger.Write(LogLevel.Debug, $"Finished binding type: {type} using {binder}. Result: Success = {result.Success}, Instance = {result.Result?.ToString() ?? "null"}.");
+            Logger.Write(LogLevel.Debug, $"Finished binding type: {type} using {binder}. Result: IsValid = {result.Success}, Instance = {result.Result?.ToString() ?? "null"}.");
 
             return result;
         }
