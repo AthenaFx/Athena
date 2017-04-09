@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Athena.Routing;
 
@@ -31,26 +30,19 @@ namespace Athena.Resources
                 return;
             }
 
-            var result = await ((Task<object>) GetType()
-                .GetMethod("Execute")
-                .MakeGenericMethod(routeResult.GetType())
-                .Invoke(this, new object[] {routeResult, environment})).ConfigureAwait(false);
+            foreach (var executor in _resourceExecutors)
+            {
+                var result = await executor.Execute(routeResult, environment).ConfigureAwait(false);
 
-            environment.SetResourceResult(result);
+                if (result.Executed)
+                {
+                    environment.SetResourceResult(result.Result);
+
+                    break;
+                }
+            }
 
             await _next(environment).ConfigureAwait(false);
-        }
-
-        protected async Task<object> Execute<TRouterResult>(TRouterResult routerResult,
-            IDictionary<string, object> environment)
-            where TRouterResult : RouterResult
-        {
-            var executor = _resourceExecutors.OfType<ResourceExecutor<TRouterResult>>().FirstOrDefault();
-
-            if (executor == null)
-                return null;
-
-            return await executor.Execute(routerResult, environment).ConfigureAwait(false);
         }
     }
 }

@@ -1,14 +1,17 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Athena.Resources;
+using Athena.Routing;
 
 namespace Athena.Web.Routing
 {
-    public class StaticFileResourceExecutor : ResourceExecutor<StaticFileRouterResult>
+    public class StaticFileResourceExecutor : ResourceExecutor
     {
-        public Task<object> Execute(StaticFileRouterResult resource, IDictionary<string, object> environment)
+        public Task<ResourceExecutionResult> Execute(RouterResult resource, IDictionary<string, object> environment)
         {
-            return Task.FromResult<object>(resource.Read());
+            var staticFileResource = resource as StaticFileRouterResult;
+
+            return Task.FromResult(new ResourceExecutionResult(staticFileResource != null, staticFileResource?.Read()));
         }
     }
 }

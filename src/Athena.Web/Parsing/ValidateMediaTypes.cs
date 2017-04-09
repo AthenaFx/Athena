@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Athena.Routing;
 
@@ -13,13 +12,13 @@ namespace Athena.Web.Parsing
     {
         private readonly AppFunc _next;
 
-        private readonly IReadOnlyCollection<FindMediaTypesForRouterResult<RouterResult>>
+        private readonly IReadOnlyCollection<FindMediaTypesForRouterResult>
             _findMediaTypesForRouterResults;
 
         private readonly IReadOnlyCollection<ResultParser> _parsers;
 
         public ValidateMediaTypes(AppFunc next,
-            IReadOnlyCollection<FindMediaTypesForRouterResult<RouterResult>> findMediaTypesForRouterResults,
+            IReadOnlyCollection<FindMediaTypesForRouterResult> findMediaTypesForRouterResults,
             IReadOnlyCollection<ResultParser> parsers)
         {
             _next = next;
@@ -39,6 +38,7 @@ namespace Athena.Web.Parsing
             }
 
             var acceptedMediaTypes = environment.GetRequest().Headers.GetAcceptedMediaTypes().ToList();
+            var renderableMediaTypes = await FindRenderableMediaTypes(routerResult, environment).ConfigureAwait(false);
 
             var parser = _parsers
                 .Select(x => new
@@ -49,7 +49,7 @@ namespace Athena.Web.Parsing
                         .SelectMany(y => acceptedMediaTypes.Select(z => new
                         {
                             MediaType = z,
-                            IsMatch = z.Matches(y),
+                            IsMatch = z.Matches(y) && (!renderableMediaTypes.Any() || renderableMediaTypes.Any(z.Matches)),
                             Priority = z.GetPriority()
                         }))
                         .Where(y => y.IsMatch)
@@ -61,12 +61,7 @@ namespace Athena.Web.Parsing
                 .Select(x => x.Parser)
                 .FirstOrDefault();
 
-            var isValid = (bool) GetType()
-                .GetMethod("CanRender")
-                .MakeGenericMethod(routerResult.GetType())
-                .Invoke(this, new object[] {routerResult, acceptedMediaTypes});
-
-            if (parser == null || !isValid)
+            if (parser == null)
             {
                 environment.GetResponse().StatusCode = 406;
 
@@ -79,19 +74,18 @@ namespace Athena.Web.Parsing
             }
         }
 
-        protected bool CanRender<TRouterResult>(TRouterResult routerResult,
-            IReadOnlyCollection<AcceptedMediaType> acceptedMediaTypes) where TRouterResult : RouterResult
+        protected async Task<IReadOnlyCollection<string>> FindRenderableMediaTypes(RouterResult routerResult,
+            IDictionary<string, object> environment)
         {
-            var finder = _findMediaTypesForRouterResults
-                .OfType<FindMediaTypesForRouterResult<TRouterResult>>()
-                .FirstOrDefault();
+            var renderable = new List<string>();
 
-            if (finder == null)
-                return true;
+            foreach (var findMediaTypesForRouterResult in _findMediaTypesForRouterResults)
+            {
+                renderable.AddRange(await findMediaTypesForRouterResult.FindAvailableFor(routerResult, environment)
+                    .ConfigureAwait(false));
+            }
 
-            var availableMediaTypes = finder.FindAvailableFor(routerResult);
-
-            return acceptedMediaTypes.Any(x => availableMediaTypes.Any(x.Matches));
+            return renderable;
         }
     }
 }

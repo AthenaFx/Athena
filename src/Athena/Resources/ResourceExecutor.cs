@@ -6,11 +6,6 @@ namespace Athena.Resources
 {
     public interface ResourceExecutor
     {
-
-    }
-
-    public interface ResourceExecutor<in TResource> : ResourceExecutor where TResource : RouterResult
-    {
-        Task<object> Execute(TResource resource, IDictionary<string, object> environment);
+        Task<ResourceExecutionResult> Execute(RouterResult routerResult, IDictionary<string, object> environment);
     }
 }

@@ -48,8 +48,11 @@ namespace Athena.Web
                 new FindCacheDataForStaticFileRoute()
             };
 
-            var mediaTypeFinders = new ReadOnlyCollection<FindMediaTypesForRouterResult<RouterResult>>(
-                new List<FindMediaTypesForRouterResult<RouterResult>>());
+            var mediaTypeFinders = new List<FindMediaTypesForRouterResult>
+            {
+                new FindAvailableMediaTypesFromMethodRouteResult(binders),
+                new FindAvailableMediaTypesFromStaticFileRouteResult()
+            };
 
             context.DefineApplication("web", AppFunctions
                 .StartWith(next => new HandleExceptions(next, (exception, environment) =>

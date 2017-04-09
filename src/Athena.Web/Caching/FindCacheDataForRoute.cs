@@ -5,11 +5,6 @@ namespace Athena.Web.Caching
 {
     public interface FindCacheDataForRoute
     {
-
-    }
-
-    public interface FindCacheDataForRoute<in TRouteResult> : FindCacheDataForRoute where TRouteResult : RouterResult
-    {
-        Task<CacheData> Find(TRouteResult routeResult);
+        Task<CacheData> Find(RouterResult routeResult);
     }
 }

@@ -1,13 +1,16 @@
 ﻿using System.Threading.Tasks;
+using Athena.Routing;
 using Athena.Web.Routing;
 
 namespace Athena.Web.Caching
 {
-    public class FindCacheDataForStaticFileRoute : FindCacheDataForRoute<StaticFileRouterResult>
+    public class FindCacheDataForStaticFileRoute : FindCacheDataForRoute
     {
-        public Task<CacheData> Find(StaticFileRouterResult routeResult)
+        public Task<CacheData> Find(RouterResult routeResult)
         {
-            return Task.FromResult(routeResult.CacheData);
+            var staticFileResource = routeResult as StaticFileRouterResult;
+
+            return Task.FromResult(staticFileResource?.CacheData);
         }
     }
 }

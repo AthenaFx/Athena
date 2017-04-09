@@ -17,7 +17,7 @@ namespace Athena.Web.Parsing
         public async Task<ParsingResult> Parse(object output)
         {
             if (output == null)
-                return null;
+                return new ParsingResult("application/json", new MemoryStream());
 
             var streamOutput = output as Stream;
 

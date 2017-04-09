@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Athena.Routing;
 
@@ -33,10 +32,9 @@ namespace Athena.Web.Caching
                 return;
             }
 
-            var cacheData = await ((Task<CacheData>) GetType()
-                .GetMethod("FindCacheDataFor")
-                .MakeGenericMethod(routerResult.GetType())
-                .Invoke(this, new object[] {routerResult})).ConfigureAwait(false);
+            var cacheData = (await _findCacheDataForRoutes
+                .Select(async x => await x.Find(routerResult).ConfigureAwait(false))
+                .FirstOrDefault(x => x != null).ConfigureAwait(false)) ?? CacheData.NotCachable();
 
             response.Headers.CacheControl = cacheData.CacheControl;
             response.Headers.ETag = cacheData.Etag;
@@ -51,17 +49,6 @@ namespace Athena.Web.Caching
             }
 
             await _next(environment).ConfigureAwait(false);
-        }
-
-        protected async Task<CacheData> FindCacheDataFor<TRouteResult>(TRouteResult routeResult)
-            where TRouteResult : RouterResult
-        {
-            var finder = _findCacheDataForRoutes.OfType<FindCacheDataForRoute<TRouteResult>>().FirstOrDefault();
-
-            if(finder == null)
-                return CacheData.NotCachable();
-
-            return (await finder.Find(routeResult).ConfigureAwait(false)) ?? CacheData.NotCachable();
         }
     }
 }

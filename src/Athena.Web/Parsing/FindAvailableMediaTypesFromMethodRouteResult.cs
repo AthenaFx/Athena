@@ -1,41 +1,50 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Athena.Binding;
 using Athena.Routing;
 
-namespace Athena.Resources
+namespace Athena.Web.Parsing
 {
-    public class MethodResourceExecutor : ResourceExecutor
+    public class FindAvailableMediaTypesFromMethodRouteResult : FindMediaTypesForRouterResult
     {
         private readonly IReadOnlyCollection<EnvironmentDataBinder> _environmentDataBinders;
         private readonly Func<Type, object> _getInstance;
 
-        public MethodResourceExecutor(IReadOnlyCollection<EnvironmentDataBinder> environmentDataBinders,
+        public FindAvailableMediaTypesFromMethodRouteResult(IReadOnlyCollection<EnvironmentDataBinder> environmentDataBinders,
             Func<Type, object> getInstance = null)
         {
             _environmentDataBinders = environmentDataBinders;
             _getInstance = getInstance ?? Activator.CreateInstance;
         }
 
-        public async Task<ResourceExecutionResult> Execute(RouterResult resource, IDictionary<string, object> environment)
+        public async Task<IReadOnlyCollection<string>> FindAvailableFor(RouterResult routerResult, IDictionary<string, object> environment)
         {
-            var methodResource = resource as MethodResourceRouterResult;
+            var methodRouterResult = routerResult as MethodResourceRouterResult;
 
-            if(methodResource == null)
-                return new ResourceExecutionResult(false, null);
+            if(methodRouterResult == null)
+                return new List<string>();
 
-            var instance = _getInstance(methodResource.Method.DeclaringType);
+            var instance = _getInstance(methodRouterResult.Method.DeclaringType);
 
-            var result = await ExecuteMethod(methodResource.Method, instance, environment).ConfigureAwait(false);
-
-            return new ResourceExecutionResult(true, result);
+            return ((await ExecuteMethod($"FindAvailableMediaTypesFor{methodRouterResult.Method.Name}",
+                        instance, environment, new List<string>()).ConfigureAwait(false)) as IEnumerable<string> ?? new List<string>{"*/*"})
+                .ToList();
         }
 
-        protected virtual async Task<object> ExecuteMethod(MethodInfo methodInfo, object instance,
-            IDictionary<string, object> environment)
+        protected virtual async Task<object> ExecuteMethod(string methodName, object instance,
+            IDictionary<string, object> environment, object defaultValue)
         {
+            var methodInfo = instance
+                .GetType()
+                .GetMethods()
+                .FirstOrDefault(x => x.Name == methodName);
+
+            if(methodInfo == null)
+                return defaultValue;
+
             var parameters = methodInfo.GetParameters();
             var methodArguments = new List<object>();
 
