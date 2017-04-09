@@ -19,7 +19,7 @@ namespace Athena.Web
 
             if (Exists(filePath))
             {
-                return Task.FromResult(new FileReadResult(true, () => File.OpenRead(filePath),
+                return Task.FromResult(new FileReadResult(true, GetContentTypeFor(filePath), () => File.OpenRead(filePath),
                     GetCacheDataFor(filePath)));
             }
 
@@ -29,12 +29,12 @@ namespace Athena.Web
 
                 if (Exists(currentFilePath))
                 {
-                    return Task.FromResult(new FileReadResult(true, () => File.OpenRead(currentFilePath),
+                    return Task.FromResult(new FileReadResult(true, GetContentTypeFor(filePath), () => File.OpenRead(currentFilePath),
                         GetCacheDataFor(currentFilePath)));
                 }
             }
 
-            return Task.FromResult(new FileReadResult(false));
+            return Task.FromResult(new FileReadResult(false, ""));
         }
 
         private CacheData GetCacheDataFor(string file)
@@ -52,6 +52,11 @@ namespace Athena.Web
         {
             //TODO:Correctly resolve path
             return file;
+        }
+
+        private string GetContentTypeFor(string filePath)
+        {
+            return "text/plain";
         }
     }
 }

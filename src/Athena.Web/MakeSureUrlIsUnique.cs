@@ -30,7 +30,7 @@ namespace Athena.Web
 
             var validSegmentPart = uri.LocalPath.ToLower();
 
-            if (validSegmentPart.EndsWith("/"))
+            if (validSegmentPart.EndsWith("/") && validSegmentPart.Length > 1)
                 validSegmentPart = validSegmentPart.Substring(0, validSegmentPart.Length - 1);
 
             if (validSegmentPart == uri.LocalPath)
