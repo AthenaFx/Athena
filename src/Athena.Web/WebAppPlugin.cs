@@ -1,7 +1,12 @@
 ﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Threading.Tasks;
+using Athena.Binding;
+using Athena.Resources;
 using Athena.Routing;
+using Athena.Web.Caching;
 using Athena.Web.ModelBinding;
+using Athena.Web.Parsing;
 using Athena.Web.Routing;
 
 namespace Athena.Web
@@ -12,9 +17,15 @@ namespace Athena.Web
         {
             var routes = RestfulEndpointConventions.BuildRoutes();
 
+            var fileHandlers = new List<StaticFileReader>
+            {
+                new ReadStaticFilesFromFileSystem("index.html", "index.htm")
+            };
+
             var routers = new List<EnvironmentRouter>
             {
-                new UrlPatternRouter(routes, new DefaultRoutePatternMatcher())
+                new UrlPatternRouter(routes, new DefaultRoutePatternMatcher()),
+                new StaticFileRouter(fileHandlers)
             };
 
             var binders = new List<EnvironmentDataBinder>
@@ -27,30 +38,32 @@ namespace Athena.Web
                 new ParseOutputAsJson()
             };
 
-            var fileHandlers = new List<StaticFileReader>
+            var resourceExecutors = new List<ResourceExecutor>
             {
-                new ReadStaticFilesFromFileSystem("index.html", "index.htm")
+                new MethodResourceExecutor(binders)
             };
 
+            var routerCacheDataFinders = new List<FindCacheDataForRoute>
+            {
+                new FindCacheDataForStaticFileRoute()
+            };
+
+            var mediaTypeFinders = new ReadOnlyCollection<FindMediaTypesForRouterResult<RouterResult>>(
+                new List<FindMediaTypesForRouterResult<RouterResult>>());
+
             context.DefineApplication("web", AppFunctions
-                .StartWith(next => new HandleOutputCache(next).Invoke)
-                .Then(next => new MakeSureUrlIsUnique(next).Invoke)
-                .Then(next => new HandleExceptions(next, (exception, environment) =>
+                .StartWith(next => new HandleExceptions(next, (exception, environment) =>
                 {
                     environment.GetResponse().StatusCode = 500;
 
                     return Task.CompletedTask;
                 }).Invoke)
-                .Then(next => new HandleStaticFiles(next, fileHandlers).Invoke)
-                .Then(next => new FindCorrectRoute(next, routers, x => x.GetResponse().StatusCode = 404).Invoke)
-                .Then(next => new HandleOutputParsing(next, outputParsers, new FindStatusCodeFromResultWithStatusCode()).Invoke)
-                .Then(next => new ExecuteEndpoint(next, binders, (validationResult, environment) =>
-                    {
-                        environment.GetResponse().StatusCode = validationResult.ValidationStatus ?? 422;
-
-                        return Task.CompletedTask;
-                    }
-                ).Invoke)
+                .Then(next => new MakeSureUrlIsUnique(next).Invoke)
+                .Then(next => new RouteToResource(next, routers, x => x.GetResponse().StatusCode = 404).Invoke)
+                .Then(next => new ValidateMediaTypes(next, mediaTypeFinders, outputParsers).Invoke)
+                .Then(next => new ValidateCache(next, routerCacheDataFinders).Invoke)
+                .Then(next => new ExecuteResource(next, resourceExecutors).Invoke)
+                .Then(next => new WriteOutput(next, new FindStatusCodeFromResultWithStatusCode()).Invoke)
                 .Build());
 
             return Task.CompletedTask;

@@ -1,6 +1,6 @@
 ﻿using System.IO;
 
-namespace Athena.Web
+namespace Athena.Web.Parsing
 {
     public class ParsingResult
     {

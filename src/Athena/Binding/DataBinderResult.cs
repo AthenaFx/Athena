@@ -1,4 +1,4 @@
-﻿namespace Athena
+﻿namespace Athena.Binding
 {
     public class DataBinderResult
     {
@@ -8,7 +8,7 @@
             Success = success;
         }
 
-        public object Result { get; private set; }
-        public bool Success { get; private set; }
+        public object Result { get; }
+        public bool Success { get; }
     }
 }

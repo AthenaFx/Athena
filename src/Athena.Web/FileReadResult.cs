@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using Athena.Web.Caching;
 
 namespace Athena.Web
 {

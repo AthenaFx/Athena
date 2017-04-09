@@ -1,6 +1,6 @@
 using System;
 
-namespace Athena.Web
+namespace Athena.Web.Caching
 {
     public class CacheData
     {

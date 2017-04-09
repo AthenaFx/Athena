@@ -6,13 +6,13 @@ namespace Athena.Routing
 {
     using AppFunc = Func<IDictionary<string, object>, Task>;
 
-    public class FindCorrectRoute
+    public class RouteToResource
     {
         private readonly AppFunc _next;
         private readonly IReadOnlyCollection<EnvironmentRouter> _environmentRouters;
         private readonly Action<IDictionary<string, object>> _onMissing;
 
-        public FindCorrectRoute(AppFunc next, IReadOnlyCollection<EnvironmentRouter> environmentRouters,
+        public RouteToResource(AppFunc next, IReadOnlyCollection<EnvironmentRouter> environmentRouters,
             Action<IDictionary<string, object>> onMissing)
         {
             _next = next;
@@ -24,14 +24,14 @@ namespace Athena.Routing
         {
             var routeResult = await _environmentRouters.RouteRequest(environment);
 
-            if (!routeResult.Success)
+            if (routeResult == null)
             {
                 _onMissing(environment);
 
                 return;
             }
 
-            environment["route-result"] = routeResult;
+            environment.SetRouteResult(routeResult);
 
             await _next(environment);
         }

@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
-namespace Athena.Routing
+namespace Athena.Resources
 {
     public class EndpointValidationResult
     {
@@ -27,8 +27,8 @@ namespace Athena.Routing
                 Message = message;
             }
 
-            public string Key { get; private set; }
-            public string Message { get; private set; }
+            public string Key { get; }
+            public string Message { get; }
         }
     }
 }

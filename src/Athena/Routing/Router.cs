@@ -11,11 +11,11 @@ namespace Athena.Routing
             {
                 var result = await router.Route(environment);
 
-                if (result.Success)
+                if (result != null)
                     return result;
             }
 
-            return new RouterResult(false, null, new Dictionary<string, object>());
+            return null;
         }
     }
 }

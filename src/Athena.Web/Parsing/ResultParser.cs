@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace Athena.Web
+namespace Athena.Web.Parsing
 {
     public interface ResultParser
     {

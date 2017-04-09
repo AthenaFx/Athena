@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Athena.Web.Caching;
 
 namespace Athena.Web
 {

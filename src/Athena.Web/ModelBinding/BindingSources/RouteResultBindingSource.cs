@@ -8,8 +8,9 @@ namespace Athena.Web.ModelBinding.BindingSources
     {
         public Task<IReadOnlyDictionary<string, object>> GetValues(IDictionary<string, object> envinronment)
         {
-            return Task.FromResult(envinronment.Get("route-result",
-                new RouterResult(false, null, new Dictionary<string, object>())).Parameters);
+            var routeResult = envinronment.GetRouteResult();
+
+            return Task.FromResult(routeResult?.GetParameters() ?? new Dictionary<string, object>());
         }
     }
 }

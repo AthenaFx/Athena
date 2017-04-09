@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Athena.Binding;
 
 namespace Athena.Web.ModelBinding
 {

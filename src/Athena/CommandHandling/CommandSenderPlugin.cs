@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using Athena.Binding;
+using Athena.Resources;
 using Athena.Routing;
 
 namespace Athena.CommandHandling
@@ -20,12 +22,14 @@ namespace Athena.CommandHandling
                 new CommandDataBinder()
             }.AsReadOnly();
 
+            var resourceExecutors = new List<ResourceExecutor>
+            {
+                new MethodResourceExecutor(binders)
+            };
+
             context.DefineApplication("commandhandler", AppFunctions
-                .StartWith(next => new FindCorrectRoute(next, routers, x =>
-                {
-                    throw new CommandHandlerNotFoundException(x.Get<object>("command").GetType());
-                }).Invoke)
-                .Then(next => new ExecuteEndpoint(next, binders).Invoke)
+                .StartWith(next => new RouteToResource(next, routers, x => throw new CommandHandlerNotFoundException(x.Get<object>("command").GetType())).Invoke)
+                .Then(next => new ExecuteResource(next, resourceExecutors).Invoke)
                 .Build());
 
             return Task.CompletedTask;

@@ -1,4 +1,5 @@
 ﻿using System.Threading.Tasks;
+using Athena.Resources;
 using Athena.Routing;
 
 namespace Athena.Web.Sample.Home

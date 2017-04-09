@@ -1,8 +1,9 @@
+using System.IO;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
-namespace Athena.Web
+namespace Athena.Web.Parsing
 {
     public class ParseOutputAsJson : ResultParser
     {
@@ -17,6 +18,16 @@ namespace Athena.Web
         {
             if (output == null)
                 return null;
+
+            var streamOutput = output as Stream;
+
+            if (streamOutput != null)
+                return new ParsingResult("application/json", streamOutput);
+
+            var stringOutput = output as string;
+
+            if(stringOutput != null)
+                return new ParsingResult("application/json", await stringOutput.ToStream().ConfigureAwait(false));
 
             var serialized = JsonConvert.SerializeObject(output, Settings);
 

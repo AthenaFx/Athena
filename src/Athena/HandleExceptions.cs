@@ -14,10 +14,8 @@ namespace Athena
 
         public HandleExceptions(AppFunc next, Func<Exception, IDictionary<string, object>, Task> onError = null)
         {
-            if (next == null)
-                throw new ArgumentNullException(nameof(next));
+            _next = next ?? throw new ArgumentNullException(nameof(next));
 
-            _next = next;
             _onError = onError ?? ((x, y) => Task.CompletedTask);
         }
 

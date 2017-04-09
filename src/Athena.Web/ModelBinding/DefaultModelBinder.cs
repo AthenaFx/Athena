@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Athena.Binding;
 using Athena.Web.ModelBinding.PropertyBinders;
 
 namespace Athena.Web.ModelBinding

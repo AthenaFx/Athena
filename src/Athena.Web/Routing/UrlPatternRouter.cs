@@ -32,9 +32,8 @@ namespace Athena.Web.Routing
                 })
                 .FirstOrDefault(x => x.Match.IsMatch);
 
-            return Task.FromResult(route == null
-                ? new RouterResult(false, null, new Dictionary<string, object>())
-                : new RouterResult(true, route.Route.Destination, route.Match.Parameters));
+            return Task.FromResult<RouterResult>(route?.Route?.Destination != null ? new MethodResourceRouterResult(
+                route.Route.Destination, route.Match.Parameters) : null);
         }
     }
 }

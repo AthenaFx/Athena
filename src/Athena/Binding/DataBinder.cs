@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Athena
+namespace Athena.Binding
 {
     public static class DataBinder
     {
