@@ -1,14 +1,16 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Athena.Binding;
+using Athena.MetaData;
 using Athena.Resources;
 using Athena.Routing;
+using Athena.Transactions;
 
 namespace Athena.CommandHandling
 {
     public class CommandSenderPlugin : AthenaPlugin
     {
-        public Task Start(AthenaContext context)
+        public Task Bootstrap(AthenaBootstrapper context)
         {
             var routers = new List<EnvironmentRouter>
             {
@@ -19,6 +21,7 @@ namespace Athena.CommandHandling
 
             var binders = new List<EnvironmentDataBinder>
             {
+                new BindEnvironment(),
                 new CommandDataBinder()
             }.AsReadOnly();
 
@@ -28,14 +31,16 @@ namespace Athena.CommandHandling
             };
 
             context.DefineApplication("commandhandler", AppFunctions
-                .StartWith(next => new RouteToResource(next, routers, x => throw new CommandHandlerNotFoundException(x.Get<object>("command").GetType())).Invoke)
+                .StartWith(next => new HandleTransactions(next).Invoke)
+                .Then(next => new SupplyMetaData(next).Invoke)
+                .Then(next => new RouteToResource(next, routers, x => throw new CommandHandlerNotFoundException(x.Get<object>("command").GetType())).Invoke)
                 .Then(next => new ExecuteResource(next, resourceExecutors).Invoke)
-                .Build());
+                .Build(), false);
 
             return Task.CompletedTask;
         }
 
-        public Task ShutDown(AthenaContext context)
+        public Task TearDown(AthenaBootstrapper context)
         {
             return Task.CompletedTask;
         }

@@ -6,9 +6,11 @@ namespace Athena.Logging
     {
         private static LogWriter _logWriter = new ConsoleLogWriter();
 
-        public static void UseLogWriter(LogWriter logWriter)
+        public static AthenaBootstrapper UseLogWriter(this AthenaBootstrapper bootstrapper, LogWriter logWriter)
         {
             _logWriter = logWriter;
+
+            return bootstrapper;
         }
 
         public static void Write(LogLevel level, string message, Exception exception = null)

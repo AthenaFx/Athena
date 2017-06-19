@@ -12,10 +12,5 @@ namespace Athena
 
             return (T)obj;
         }
-
-        public static string GetCurrentApplication(this IDictionary<string, object> environment)
-        {
-            return environment.Get(AthenaContextExtensions.ApplicationKey, "");
-        }
     }
 }

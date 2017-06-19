@@ -34,9 +34,9 @@ namespace Athena
 
                 list.Reverse();
 
-                AppFunc lastFunc = x => Task.CompletedTask;
+                Task LastFunc(IDictionary<string, object> x) => Task.CompletedTask;
 
-                return list.Aggregate(lastFunc, (current, item) => item(current));
+                return list.Aggregate((AppFunc) LastFunc, (current, item) => item(current));
             }
         }
     }

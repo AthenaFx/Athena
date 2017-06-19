@@ -10,29 +10,37 @@ namespace Athena
 {
     using AppFunc = Func<IDictionary<string, object>, Task>;
 
-    public sealed class AthenaApplications : AthenaContext
+    public sealed class AthenaApplications : AthenaContext, AthenaBootstrapper
     {
         private static readonly IDictionary<string, AppFunc> Applications = new ConcurrentDictionary<string, AppFunc>();
+        private readonly IEnumerable<AthenaPlugin> _plugins;
 
         public static IReadOnlyCollection<Assembly> ApplicationAssemblies { get; private set; }
 
-        private AthenaApplications()
+        private AthenaApplications(IEnumerable<AthenaPlugin> plugins)
         {
-
+            _plugins = plugins;
         }
 
-        public void DefineApplication(string name, AppFunc app)
+        public void DefineApplication(string name, AppFunc app, bool overwrite = true)
         {
-            Applications[name] = app;
+            if (overwrite || !Applications.ContainsKey(name))
+                Applications[name] = app;
         }
 
         public async Task Execute(string application, IDictionary<string, object> environment)
         {
-            using(environment.EnterApplication(application))
+            using (environment.EnterApplication(this, application))
                 await Applications[application](environment);
         }
 
-        public static async Task<AthenaContext> Bootsrap(params Assembly[] applicationAssemblies)
+        public Task ShutDown()
+        {
+            return Task.WhenAll(_plugins.Select(x => x.TearDown(this)));
+        }
+
+        public static async Task<AthenaContext> Bootsrap(Action<AthenaBootstrapper> bootstrap,
+            params Assembly[] applicationAssemblies)
         {
             ApplicationAssemblies = applicationAssemblies;
 
@@ -49,19 +57,27 @@ namespace Athena
                 .Select(Activator.CreateInstance)
                 .OfType<AthenaPlugin>()
                 .ToList();
+            
+            var context = new AthenaApplications(plugins);
 
-            var context = new AthenaApplications();
+            await Task.WhenAll(plugins.Select(x => x.Bootstrap(context)));
 
-            await Task.WhenAll(plugins.Select(x => x.Start(context)));
-
+            bootstrap(context);
+            
             return context;
+        }
+        
+        public static Task<AthenaContext> Bootsrap(params Assembly[] applicationAssemblies)
+        {
+            return Bootsrap(x => { }, applicationAssemblies);
         }
 
         private static IEnumerable<Assembly> GetReferencingAssemblies(string assemblyName)
         {
             var dependencies = DependencyContext.Default.RuntimeLibraries;
 
-            return (from library in dependencies where IsCandidateLibrary(library, assemblyName)
+            return (from library in dependencies
+                where IsCandidateLibrary(library, assemblyName)
                 select Assembly.Load(new AssemblyName(library.Name))).ToList();
         }
 

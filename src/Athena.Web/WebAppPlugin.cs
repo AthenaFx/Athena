@@ -1,9 +1,10 @@
 ﻿using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using Athena.Binding;
+using Athena.MetaData;
 using Athena.Resources;
 using Athena.Routing;
+using Athena.Transactions;
 using Athena.Web.Caching;
 using Athena.Web.ModelBinding;
 using Athena.Web.Parsing;
@@ -14,7 +15,7 @@ namespace Athena.Web
 {
     public class WebAppPlugin : AthenaPlugin
     {
-        public Task Start(AthenaContext context)
+        public Task Bootstrap(AthenaBootstrapper context)
         {
             var routes = RestfulEndpointConventions.BuildRoutes();
 
@@ -31,6 +32,7 @@ namespace Athena.Web
 
             var binders = new List<EnvironmentDataBinder>
             {
+                new BindEnvironment(),
                 new WebDataBinder(ModelBinders.GetAll())
             };
 
@@ -68,6 +70,8 @@ namespace Athena.Web
                     return Task.CompletedTask;
                 }).Invoke)
                 .Then(next => new MakeSureUrlIsUnique(next).Invoke)
+                .Then(next => new HandleTransactions(next).Invoke)
+                .Then(next => new SupplyMetaData(next).Invoke)
                 .Then(next => new RouteToResource(next, routers, x => x.GetResponse().StatusCode = 404).Invoke)
                 .Then(next => new EnsureEndpointExists(next, routeCheckers).Invoke)
                 .Then(next => new UseCorrectOutputParser(next, mediaTypeFinders, outputParsers).Invoke)
@@ -75,12 +79,12 @@ namespace Athena.Web
                 .Then(next => new ValidateCache(next, routerCacheDataFinders).Invoke)
                 .Then(next => new ExecuteResource(next, resourceExecutors).Invoke)
                 .Then(next => new WriteOutput(next, new FindStatusCodeFromResultWithStatusCode()).Invoke)
-                .Build());
+                .Build(), false);
 
             return Task.CompletedTask;
         }
 
-        public Task ShutDown(AthenaContext context)
+        public Task TearDown(AthenaBootstrapper context)
         {
             return Task.CompletedTask;
         }
