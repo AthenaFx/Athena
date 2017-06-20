@@ -13,11 +13,11 @@ namespace Athena.Routing
         private readonly Action<IDictionary<string, object>> _onMissing;
 
         public RouteToResource(AppFunc next, IReadOnlyCollection<EnvironmentRouter> environmentRouters,
-            Action<IDictionary<string, object>> onMissing)
+            Action<IDictionary<string, object>> onMissing = null)
         {
             _next = next;
             _environmentRouters = environmentRouters;
-            _onMissing = onMissing;
+            _onMissing = onMissing ?? (x => {});
         }
 
         public async Task Invoke(IDictionary<string, object> environment)
