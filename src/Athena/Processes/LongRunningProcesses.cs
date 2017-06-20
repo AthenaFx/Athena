@@ -19,6 +19,12 @@ namespace Athena.Processes
 
             return bootstrapper;
         }
+        
+        public static AthenaBootstrapper UseProcess(this AthenaBootstrapper bootstrapper, LongRunningProcess process, 
+            Func<Func<bool, Task>, Task> subscribeToChanges)
+        {
+            return bootstrapper.UseProcess(new ConditionedProcessWrapper(process, subscribeToChanges));
+        }
 
         internal static Task StartAllProcesses()
         {

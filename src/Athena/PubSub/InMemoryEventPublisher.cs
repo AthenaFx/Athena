@@ -14,7 +14,7 @@ namespace Athena.PubSub
         
         public async Task Publish<TEvent>(TEvent evnt)
         {
-            foreach (var type in GetTypesFrom(typeof(TEvent)))
+            foreach (var type in typeof(TEvent).GetParentTypesFor())
             {
                 var subscriptions = Subscriptions.Where(x => x.Value.SubscribedTo == type).ToList();
 
@@ -40,25 +40,6 @@ namespace Athena.PubSub
         {
             if (Subscriptions.ContainsKey(id))
                 Subscriptions.Remove(id);
-        }
-        
-        private static IEnumerable<Type> GetTypesFrom(Type eventType)
-        {
-            if (eventType == null)
-                yield break;
-
-            yield return eventType;
-
-            var baseType = eventType.GetTypeInfo().BaseType;
-
-            while (baseType != null)
-            {
-                yield return baseType;
-                baseType = baseType.GetTypeInfo().BaseType;
-            }
-
-            foreach (var @interface in eventType.GetInterfaces())
-                yield return @interface;
         }
     }
 }

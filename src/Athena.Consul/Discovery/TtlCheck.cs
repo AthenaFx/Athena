@@ -34,9 +34,6 @@ namespace Athena.Consul.Discovery
         {
             var checkId = $"service:{id}:ttl";
 
-            bootstrapper =
-                bootstrapper.UseProcess(new SendTtlDataToConsul(interval - new TimeSpan(interval.Ticks / 2), checkId));
-            
             EventPublishing.Subscribe<BootstrapCompleted>(async x =>
             {
                 var client = new ConsulClient();
@@ -60,7 +57,8 @@ namespace Athena.Consul.Discovery
                 });
             });
 
-            return bootstrapper;
+            return bootstrapper
+                .UseProcess(new SendTtlDataToConsul(interval - new TimeSpan(interval.Ticks / 2), checkId));
         }
     }
 }
