@@ -18,4 +18,10 @@
       <Version>0.7.2.3</Version>
     </PackageReference>
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Athena\Athena.csproj">
+      <Project>{2f488004-813a-4cbd-938a-4a7fc60bfe98}</Project>
+      <Name>Athena</Name>
+    </ProjectReference>
+  </ItemGroup>
 </Project>

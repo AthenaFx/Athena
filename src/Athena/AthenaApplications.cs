@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Athena.Messages;
+using Athena.PubSub;
 using Microsoft.Extensions.DependencyModel;
 
 namespace Athena
@@ -22,10 +24,19 @@ namespace Athena
             _plugins = plugins;
         }
 
+        public string ApplicationName { get; private set; } = Assembly.GetEntryAssembly().GetName().Name.Replace(".", "");
+
         public void DefineApplication(string name, AppFunc app, bool overwrite = true)
         {
             if (overwrite || !Applications.ContainsKey(name))
                 Applications[name] = app;
+        }
+
+        public AthenaBootstrapper WithApplicationName(string name)
+        {
+            ApplicationName = name;
+
+            return this;
         }
 
         public async Task Execute(string application, IDictionary<string, object> environment)
@@ -63,6 +74,8 @@ namespace Athena
             await Task.WhenAll(plugins.Select(x => x.Bootstrap(context)));
 
             bootstrap(context);
+
+            await EventPublishing.Publish(new BootstrapCompleted());
             
             return context;
         }

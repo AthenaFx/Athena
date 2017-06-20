@@ -22,7 +22,7 @@ namespace Athena.PubSub
             }
         }
 
-        public Task<EventSubscription> Subscribe<TEvent>(Func<TEvent, Task> subscription, string id = null)
+        public EventSubscription Subscribe<TEvent>(Func<TEvent, Task> subscription, string id = null)
         {
             var type = typeof(TEvent);
             
@@ -33,7 +33,7 @@ namespace Athena.PubSub
 
             Subscriptions[id] = newSubscription;
 
-            return Task.FromResult(newSubscription);
+            return newSubscription;
         }
 
         public void UnSubscribe(string id)

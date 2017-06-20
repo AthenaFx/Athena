@@ -19,7 +19,7 @@ namespace Athena.PubSub
             return _publisher.Publish(evnt);
         }
 
-        public static Task<EventSubscription> Subscribe<TEvent>(Func<TEvent, Task> subscription, string id = null)
+        public static EventSubscription Subscribe<TEvent>(Func<TEvent, Task> subscription, string id = null)
         {
             return _publisher.Subscribe(subscription, id);
         }
