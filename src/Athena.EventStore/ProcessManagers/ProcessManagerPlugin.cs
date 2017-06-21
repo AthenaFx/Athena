@@ -8,7 +8,7 @@ namespace Athena.EventStore.ProcessManagers
     {
         public Task Bootstrap(AthenaBootstrapper context)
         {
-            context.DefineApplication("esprojection", AppFunctions
+            context.DefineApplication("esprocessmanager", AppFunctions
                 .StartWith(next => new HandleTransactions(next).Invoke)
                 .Then(next => new SupplyMetaData(next).Invoke)
                 .Then(next => new ExecuteProcessManager(next).Invoke)

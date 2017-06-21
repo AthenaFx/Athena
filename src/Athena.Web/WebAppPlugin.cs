@@ -33,6 +33,7 @@ namespace Athena.Web
             var binders = new List<EnvironmentDataBinder>
             {
                 new BindEnvironment(),
+                new BindContext(),
                 new WebDataBinder(ModelBinders.GetAll())
             };
 

@@ -12,5 +12,12 @@ namespace Athena.CommandHandling
                 ["command"] = command
             });
         }
+
+        public static Task SendCommand<TCommand>(this IDictionary<string, object> environment, TCommand command)
+        {
+            var context = environment.Get<AthenaContext>("context");
+
+            return context.SendCommand(command);
+        }
     }
 }
