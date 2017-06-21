@@ -27,4 +27,7 @@
       <Name>Athena</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="ProcessManagers" />
+  </ItemGroup>
 </Project>

@@ -3,3 +3,7 @@ project.lock.json
 src/packages
 obj
 bin
+tools/FAKE
+build
+.fake
+src/CommonAssemblyInfo.cs
