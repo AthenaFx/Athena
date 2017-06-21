@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace Athena.Timeouts
+namespace Athena.ApplicationTimeouts
 {
-    public static class TimeoutBootstrapExtensions
+    public static class Timeouts
     {
         public static TimeoutStore CurrentTimeoutStore { get; private set; }
 
@@ -14,7 +14,7 @@ namespace Athena.Timeouts
             return bootstrapper;
         }
 
-        public static async Task RequestTimeout(this AthenaContext context, object message, DateTime at)
+        public static async Task RequestTimeout(object message, DateTime at)
         {
             if(CurrentTimeoutStore == null)
                 throw new InvalidOperationException("No timeout store defined");

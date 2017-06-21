@@ -5,7 +5,7 @@ using Athena.Logging;
 using Athena.Processes;
 using Athena.PubSub;
 
-namespace Athena.Timeouts
+namespace Athena.ApplicationTimeouts
 {
     public class TimeoutManager : LongRunningProcess
     {

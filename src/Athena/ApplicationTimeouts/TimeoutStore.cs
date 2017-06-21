@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Athena.Timeouts
+namespace Athena.ApplicationTimeouts
 {
     public interface TimeoutStore
     {

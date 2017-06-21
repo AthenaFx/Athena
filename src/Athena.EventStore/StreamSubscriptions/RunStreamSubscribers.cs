@@ -56,7 +56,18 @@ namespace Athena.EventStore.StreamSubscriptions
 
         public Task Stop()
         {
-            throw new NotImplementedException();
+            _running = false;
+
+            foreach (var subscription in _serviceSubscriptions)
+                subscription.Value.Close();
+            
+            _serviceSubscriptions.Clear();
+            
+            _connection.Close();
+            _connection.Dispose();
+            _connection = null;
+            
+            return Task.CompletedTask;
         }
 
         private async Task SetupLiveSubscription(string stream, int workers)

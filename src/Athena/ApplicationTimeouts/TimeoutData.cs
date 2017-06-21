@@ -1,6 +1,6 @@
 using System;
 
-namespace Athena.Timeouts
+namespace Athena.ApplicationTimeouts
 {
     public class TimeoutData
     {
