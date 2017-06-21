@@ -10,7 +10,7 @@ namespace Athena.Consul.Discovery
 {
     public class SendTtlDataToConsul : LongRunningProcess
     {
-        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private CancellationTokenSource _cancellationTokenSource;
         private readonly ConsulClient _client;
         private readonly TimeSpan _interval;
         private readonly string _checkId;
@@ -25,6 +25,8 @@ namespace Athena.Consul.Discovery
         
         public Task Start()
         {
+            _cancellationTokenSource = new CancellationTokenSource();
+            
             StartSendingTtl();
             
             return Task.CompletedTask;
@@ -32,7 +34,7 @@ namespace Athena.Consul.Discovery
 
         public Task Stop()
         {
-            _cancellationTokenSource.Cancel();
+            _cancellationTokenSource?.Cancel();
             
             return Task.CompletedTask;
         }

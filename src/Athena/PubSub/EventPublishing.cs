@@ -14,7 +14,7 @@ namespace Athena.PubSub
             return bootstrapper;
         }
 
-        public static Task Publish<TEvent>(TEvent evnt)
+        public static Task Publish(object evnt)
         {
             return _publisher.Publish(evnt);
         }

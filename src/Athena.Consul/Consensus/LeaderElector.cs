@@ -13,7 +13,7 @@ namespace Athena.Consul.Consensus
     public class LeaderElector : LongRunningProcess
     {
         private readonly string _serviceName;
-        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private CancellationTokenSource _cancellationTokenSource;
         private NodeRole _currentRole = NodeRole.Follower;
         private IDistributedLock _lock;
 
@@ -24,6 +24,8 @@ namespace Athena.Consul.Consensus
 
         public Task Start()
         {
+            _cancellationTokenSource = new CancellationTokenSource();
+            
             //TODO:Configure
             var client = new ConsulClient();
             
@@ -36,7 +38,7 @@ namespace Athena.Consul.Consensus
 
         public Task Stop()
         {
-            _cancellationTokenSource.Cancel();
+            _cancellationTokenSource?.Cancel();
 
             if(_lock != null && _lock.IsHeld)
                 _lock.Release();

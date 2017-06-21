@@ -12,9 +12,9 @@ namespace Athena.PubSub
         private static readonly IDictionary<string, EventSubscription> Subscriptions 
             = new ConcurrentDictionary<string, EventSubscription>();
         
-        public async Task Publish<TEvent>(TEvent evnt)
+        public async Task Publish(object evnt)
         {
-            foreach (var type in typeof(TEvent).GetParentTypesFor())
+            foreach (var type in evnt.GetType().GetParentTypesFor())
             {
                 var subscriptions = Subscriptions.Where(x => x.Value.SubscribedTo == type).ToList();
 
