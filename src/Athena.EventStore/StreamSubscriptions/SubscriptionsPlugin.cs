@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Athena.Binding;
 using Athena.MetaData;
@@ -31,20 +32,18 @@ namespace Athena.EventStore.StreamSubscriptions
                 new MethodResourceExecutor(binders)
             };
             
-            context.DefineApplication("livesubscription", AppFunctions
-                .StartWith(next => new Retry(next, 5, TimeSpan.FromSeconds(1), "Subscription failed").Invoke)
-                .Then(next => new HandleTransactions(next).Invoke)
-                .Then(next => new SupplyMetaData(next).Invoke)
-                .Then(next => new RouteToResource(next, routers).Invoke)
-                .Then(next => new ExecuteResource(next, resourceExecutors).Invoke)
-                .Build());
+            context.DefineApplication("livesubscription", builder => builder
+                .Last("Retry", next => new Retry(next, 5, TimeSpan.FromSeconds(1), "Subscription failed").Invoke)
+                .Last("HandleTransactions", next => new HandleTransactions(next, Enumerable.Empty<Transaction>()).Invoke)
+                .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
+                .Last("RouteToResource", next => new RouteToResource(next, routers).Invoke)
+                .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke), false);
             
-            context.DefineApplication("persistentsubscription", AppFunctions
-                .StartWith(next => new HandleTransactions(next).Invoke)
-                .Then(next => new SupplyMetaData(next).Invoke)
-                .Then(next => new RouteToResource(next, routers).Invoke)
-                .Then(next => new ExecuteResource(next, resourceExecutors).Invoke)
-                .Build());
+            context.DefineApplication("persistentsubscription", builder => builder
+                .Last("HandleTransactions", next => new HandleTransactions(next, Enumerable.Empty<Transaction>()).Invoke)
+                .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
+                .Last("RouteToResource", next => new RouteToResource(next, routers).Invoke)
+                .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke), false);
             
             return Task.CompletedTask;
         }

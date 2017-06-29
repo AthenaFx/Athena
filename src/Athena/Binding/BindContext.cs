@@ -10,7 +10,7 @@ namespace Athena.Binding
         public Task<DataBinderResult> Bind(Type to, IDictionary<string, object> environment)
         {
             return Task.FromResult(typeof(AthenaContext).IsAssignableFrom(to)
-                ? new DataBinderResult(environment.Get<AthenaContext>("context"), true)
+                ? new DataBinderResult(environment.Get<AthenaContext>("athenacontext"), true)
                 : new DataBinderResult(null, false));
         }
     }

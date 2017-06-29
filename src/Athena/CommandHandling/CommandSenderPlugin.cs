@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Athena.Binding;
 using Athena.MetaData;
@@ -32,13 +33,12 @@ namespace Athena.CommandHandling
                 new MethodResourceExecutor(binders)
             };
 
-            context.DefineApplication("commandhandler", AppFunctions
-                .StartWith(next => new HandleTransactions(next).Invoke)
-                .Then(next => new SupplyMetaData(next).Invoke)
-                .Then(next => new RouteToResource(next, routers, x => 
+            context.DefineApplication("commandhandler", builder => builder
+                .Last("HandleTransactions", next => new HandleTransactions(next, Enumerable.Empty<Transaction>()).Invoke)
+                .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
+                .Last("RouteToResource", next => new RouteToResource(next, routers, x => 
                     throw new CommandHandlerNotFoundException(x.Get<object>("command").GetType())).Invoke)
-                .Then(next => new ExecuteResource(next, resourceExecutors).Invoke)
-                .Build(), false);
+                .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke), false);
 
             return Task.CompletedTask;
         }

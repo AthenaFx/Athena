@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -11,10 +13,14 @@ using Microsoft.Extensions.DependencyModel;
 namespace Athena
 {
     using AppFunc = Func<IDictionary<string, object>, Task>;
-
+    
     public sealed class AthenaApplications : AthenaContext, AthenaBootstrapper
     {
-        private static readonly IDictionary<string, AppFunc> Applications = new ConcurrentDictionary<string, AppFunc>();
+        private readonly IDictionary<string, AppFunctionBuilder> _applicationBuilders
+            = new ConcurrentDictionary<string, AppFunctionBuilder>();
+
+        private IReadOnlyDictionary<string, AppFunc> _applications;
+        
         private readonly IEnumerable<AthenaPlugin> _plugins;
 
         public static IReadOnlyCollection<Assembly> ApplicationAssemblies { get; private set; }
@@ -26,10 +32,23 @@ namespace Athena
 
         public string ApplicationName { get; private set; } = Assembly.GetEntryAssembly().GetName().Name.Replace(".", "");
 
-        public void DefineApplication(string name, AppFunc app, bool overwrite = true)
+        public AthenaBootstrapper DefineApplication(string name, Func<AppFunctionBuilder, AppFunctionBuilder> builder, 
+            bool overwrite = true)
         {
-            if (overwrite || !Applications.ContainsKey(name))
-                Applications[name] = app;
+            if (overwrite || !_applicationBuilders.ContainsKey(name))
+                _applicationBuilders[name] = builder(new AppFunctionBuilder());
+
+            return this;
+        }
+
+        public AthenaBootstrapper ConfigureApplication(string name, Func<AppFunctionBuilder, AppFunctionBuilder> app)
+        {
+            if (!_applicationBuilders.ContainsKey(name))
+                return DefineApplication(name, app);
+
+            _applicationBuilders[name] = app(_applicationBuilders[name]);
+
+            return this;
         }
 
         public AthenaBootstrapper WithApplicationName(string name)
@@ -39,10 +58,15 @@ namespace Athena
             return this;
         }
 
+        public IReadOnlyCollection<string> GetDefinedApplications()
+        {
+            return new ReadOnlyCollection<string>(_applicationBuilders.Keys.ToList());
+        }
+
         public async Task Execute(string application, IDictionary<string, object> environment)
         {
             using (environment.EnterApplication(this, application))
-                await Applications[application](environment);
+                await _applications[application](environment).ConfigureAwait(false);
         }
 
         public Task ShutDown()
@@ -50,9 +74,16 @@ namespace Athena
             return Task.WhenAll(_plugins.Select(x => x.TearDown(this)));
         }
 
+        private void Start()
+        {
+            _applications = _applicationBuilders.ToDictionary(x => x.Key, x => x.Value.Compile());
+        }
+
         public static async Task<AthenaContext> Bootsrap(Action<AthenaBootstrapper> bootstrap,
             params Assembly[] applicationAssemblies)
         {
+            var timer = Stopwatch.StartNew();
+            
             ApplicationAssemblies = applicationAssemblies;
 
             var pluginType = typeof(AthenaPlugin);
@@ -71,12 +102,16 @@ namespace Athena
             
             var context = new AthenaApplications(plugins);
 
-            await Task.WhenAll(plugins.Select(x => x.Bootstrap(context)));
+            await Task.WhenAll(plugins.Select(x => x.Bootstrap(context))).ConfigureAwait(false);
 
             bootstrap(context);
-
-            await EventPublishing.Publish(new BootstrapCompleted());
             
+            context.Start();
+            
+            timer.Stop();
+
+            await EventPublishing.Publish(new BootstrapCompleted(timer.Elapsed)).ConfigureAwait(false);
+
             return context;
         }
         

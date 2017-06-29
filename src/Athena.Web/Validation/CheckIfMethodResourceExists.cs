@@ -11,13 +11,13 @@ namespace Athena.Web.Validation
     public class CheckIfMethodResourceExists : CheckIfResourceExists
     {
         private readonly IReadOnlyCollection<EnvironmentDataBinder> _environmentDataBinders;
-        private readonly Func<Type, object> _getInstance;
+        private readonly Func<Type, IDictionary<string, object>, object> _getInstance;
 
         public CheckIfMethodResourceExists(IReadOnlyCollection<EnvironmentDataBinder> environmentDataBinders,
-            Func<Type, object> getInstance = null)
+            Func<Type, IDictionary<string, object>, object> getInstance = null)
         {
             _environmentDataBinders = environmentDataBinders;
-            _getInstance = getInstance ?? Activator.CreateInstance;
+            _getInstance = getInstance ?? ((x, y) => Activator.CreateInstance(x));
         }
 
         public async Task<bool> Exists(RouterResult result, IDictionary<string, object> environment)
@@ -27,7 +27,7 @@ namespace Athena.Web.Validation
             if(methodRouterResult == null)
                 return true;
 
-            var instance = _getInstance(methodRouterResult.Method.DeclaringType);
+            var instance = _getInstance(methodRouterResult.Method.DeclaringType, environment);
 
             return await ExecuteMethod($"{methodRouterResult.Method.Name}Exists",
                 instance, environment).ConfigureAwait(false);
@@ -36,6 +36,7 @@ namespace Athena.Web.Validation
         protected virtual async Task<bool> ExecuteMethod(string methodName, object instance,
             IDictionary<string, object> environment)
         {
+            //TODO:Cache methods
             var methodInfo = instance
                 .GetType()
                 .GetMethods()

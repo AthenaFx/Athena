@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Athena.Binding;
 using Athena.MetaData;
@@ -17,7 +18,7 @@ namespace Athena.Web
     {
         public Task Bootstrap(AthenaBootstrapper context)
         {
-            var routes = RestfulEndpointConventions.BuildRoutes();
+            var routes = DefaultRouteConventions.BuildRoutes();
 
             var fileHandlers = new List<StaticFileReader>
             {
@@ -63,24 +64,27 @@ namespace Athena.Web
                 new CheckIfMethodResourceExists(binders)
             };
 
-            context.DefineApplication("web", AppFunctions
-                .StartWith(next => new HandleExceptions(next, (exception, environment) =>
+            context.DefineApplication("web", builder => builder
+                .Last("HandleExceptions", next => new HandleExceptions(next, (exception, environment) =>
                 {
                     environment.GetResponse().StatusCode = 500;
 
                     return Task.CompletedTask;
                 }).Invoke)
-                .Then(next => new MakeSureUrlIsUnique(next).Invoke)
-                .Then(next => new HandleTransactions(next).Invoke)
-                .Then(next => new SupplyMetaData(next).Invoke)
-                .Then(next => new RouteToResource(next, routers, x => x.GetResponse().StatusCode = 404).Invoke)
-                .Then(next => new EnsureEndpointExists(next, routeCheckers).Invoke)
-                .Then(next => new UseCorrectOutputParser(next, mediaTypeFinders, outputParsers).Invoke)
-                .Then(next => new ValidateParameters(next, new List<ValidateRouteResult>()).Invoke)
-                .Then(next => new ValidateCache(next, routerCacheDataFinders).Invoke)
-                .Then(next => new ExecuteResource(next, resourceExecutors).Invoke)
-                .Then(next => new WriteOutput(next, new FindStatusCodeFromResultWithStatusCode()).Invoke)
-                .Build(), false);
+                .Last("MakeSureUrlIsUnique", next => new MakeSureUrlIsUnique(next).Invoke)
+                .Last("HandleTransactions", next => new HandleTransactions(next, Enumerable.Empty<Transaction>()).Invoke)
+                .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
+                .Last("RouteToResource",
+                    next => new RouteToResource(next, routers, x => x.GetResponse().StatusCode = 404).Invoke)
+                .Last("EnsureEndpointExists", next => new EnsureEndpointExists(next, routeCheckers).Invoke)
+                .Last("UseCorrectOutputParser",
+                    next => new UseCorrectOutputParser(next, mediaTypeFinders, outputParsers).Invoke)
+                .Last("ValidateParameters",
+                    next => new ValidateParameters(next, new List<ValidateRouteResult>()).Invoke)
+                .Last("ValidateCache", next => new ValidateCache(next, routerCacheDataFinders).Invoke)
+                .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke)
+                .Last("WriteOutput",
+                    next => new WriteOutput(next, new FindStatusCodeFromResultWithStatusCode()).Invoke), false);
 
             return Task.CompletedTask;
         }

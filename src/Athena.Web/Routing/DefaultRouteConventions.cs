@@ -6,7 +6,7 @@ using System.Reflection;
 
 namespace Athena.Web.Routing
 {
-    public static class RestfulEndpointConventions
+    public static class DefaultRouteConventions
     {
         private static readonly IReadOnlyCollection<string> AvailableMethodNames = new ReadOnlyCollection<string>(new List<string>
         {

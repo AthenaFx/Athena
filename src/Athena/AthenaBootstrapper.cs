@@ -7,7 +7,9 @@ namespace Athena
     public interface AthenaBootstrapper
     {
         string ApplicationName { get; }
-        void DefineApplication(string name, Func<IDictionary<string, object>, Task> app, bool overwrite = true);
+        AthenaBootstrapper DefineApplication(string name, Func<AppFunctionBuilder, AppFunctionBuilder> app, bool overwrite = true);
+        AthenaBootstrapper ConfigureApplication(string name, Func<AppFunctionBuilder, AppFunctionBuilder> app);
         AthenaBootstrapper WithApplicationName(string name);
+        IReadOnlyCollection<string> GetDefinedApplications();
     }
 }

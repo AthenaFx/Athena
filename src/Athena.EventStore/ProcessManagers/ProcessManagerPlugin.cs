@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading.Tasks;
 using Athena.MetaData;
 using Athena.Transactions;
@@ -8,11 +9,10 @@ namespace Athena.EventStore.ProcessManagers
     {
         public Task Bootstrap(AthenaBootstrapper context)
         {
-            context.DefineApplication("esprocessmanager", AppFunctions
-                .StartWith(next => new HandleTransactions(next).Invoke)
-                .Then(next => new SupplyMetaData(next).Invoke)
-                .Then(next => new ExecuteProcessManager(next).Invoke)
-                .Build(), false);
+            context.DefineApplication("esprocessmanager", builder => builder
+                .Last("HandleTransactions", next => new HandleTransactions(next, Enumerable.Empty<Transaction>()).Invoke)
+                .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
+                .Last("ExecuteProcessManager", next => new ExecuteProcessManager(next).Invoke), false);
             
             return Task.CompletedTask;
         }

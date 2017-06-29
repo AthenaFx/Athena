@@ -15,7 +15,7 @@ namespace Athena.CommandHandling
 
         public static Task SendCommand<TCommand>(this IDictionary<string, object> environment, TCommand command)
         {
-            var context = environment.Get<AthenaContext>("context");
+            var context = environment.GetAthenaContext();
 
             return context.SendCommand(command);
         }

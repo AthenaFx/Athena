@@ -88,16 +88,18 @@ namespace Athena.EventStore.Projections
                         .FromEvent<DeSerializationResult>(
                             x => messageProcessor.MessageArrived += x, x => messageProcessor.MessageArrived -= x)
                         .Buffer(TimeSpan.FromSeconds(1), 5000)
-                        .Subscribe(async x => await HandleEvents(projection, x,
+                        .Select(async x => await HandleEvents(projection, x,
                                 y => messageProcessor.OnMessageHandled(y.OriginalEvent.OriginalEventNumber))
-                            .ConfigureAwait(false));
+                            .ConfigureAwait(false))
+                        .Subscribe();
 
                     var messageHandlerSubscription = Observable
                         .FromEvent<long>(
                             x => messageProcessor.MessageHandled += x, x => messageProcessor.MessageHandled -= x)
                         .Buffer(TimeSpan.FromMinutes(1))
-                        .Subscribe(async x => await _projectionsPositionHandler.SetLastEvent(projection.Name, x.Max())
-                            .ConfigureAwait(false));
+                        .Select(async x => await _projectionsPositionHandler.SetLastEvent(projection.Name, x.Max())
+                            .ConfigureAwait(false))
+                        .Subscribe();
                 
                     var eventStoreSubscription = _connection.SubscribeToStreamFrom(projection.Name, 
                         await _projectionsPositionHandler.GetLastEvent(projection.Name).ConfigureAwait(false), 

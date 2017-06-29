@@ -9,25 +9,30 @@ namespace Athena.Transactions
     public class HandleTransactions
     {
         private readonly AppFunc _next;
+        private readonly IEnumerable<Transaction> _transactionManagers;
 
-        public HandleTransactions(AppFunc next)
+        public HandleTransactions(AppFunc next, IEnumerable<Transaction> transactionManagers)
         {
             _next = next;
+            _transactionManagers = transactionManagers;
         }
 
         public async Task Invoke(IDictionary<string, object> environment)
         {
-            var transaction = await TransactionManager.BeginTransaction(environment).ConfigureAwait(false);
-            
             try
             {
+                foreach (var transactionManager in _transactionManagers)
+                    await transactionManager.Begin(environment).ConfigureAwait(false);
+                
                 await _next(environment).ConfigureAwait(false);
 
-                await transaction.Commit(environment).ConfigureAwait(false);
+                foreach (var transactionManager in _transactionManagers)
+                    await transactionManager.Commit(environment).ConfigureAwait(false);
             }
             catch (Exception e)
             {
-                await transaction.Rollback(environment, e).ConfigureAwait(false);
+                foreach (var transactionManager in _transactionManagers)
+                    await transactionManager.Rollback(environment, e).ConfigureAwait(false);
                 
                 throw;
             }
