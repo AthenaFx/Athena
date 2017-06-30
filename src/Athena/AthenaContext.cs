@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace Athena.Configuration
+namespace Athena
 {
     public interface AthenaContext
     {

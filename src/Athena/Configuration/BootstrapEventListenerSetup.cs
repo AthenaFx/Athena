@@ -21,5 +21,15 @@ namespace Athena.Configuration
 
             return _bootstrapper;
         }
+
+        public AthenaBootstrapper Do(Action<TEvent, AthenaSetupContext> execute)
+        {
+            return Do((evnt, context) =>
+            {
+                execute(evnt, context);
+
+                return Task.CompletedTask;
+            });
+        }
     }
 }

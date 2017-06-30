@@ -25,6 +25,11 @@ namespace Athena.Configuration
 
             return this;
         }
+        
+        public AppFunctionBuilder Replace(string item, Func<AppFunc, AppFunc> builder)
+        {
+            return Replace(item, item, builder);
+        }
 
         public AppFunctionBuilder Before(string item, string name, Func<AppFunc, AppFunc> builder)
         {
