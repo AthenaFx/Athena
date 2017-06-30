@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Athena.Configuration;
 using Athena.EventStore.Serialization;
 using Athena.Logging;
 using Athena.Processes;
@@ -11,9 +10,7 @@ namespace Athena.EventStore.ProcessManagers
 {
     public class RunProcessManagers : LongRunningProcess
     {
-        private readonly IEnumerable<ProcessManager> _processManagers;
-        private readonly EventStoreConnectionString _connectionString;
-        private readonly EventSerializer _eventSerializer;
+        private readonly ProcessManagersSettings _settings;
 
         private IEventStoreConnection _connection;
         private bool _running;
@@ -21,12 +18,9 @@ namespace Athena.EventStore.ProcessManagers
         private readonly IDictionary<string, ProcessManagerSubscription> _processManagerSubscriptions =
             new Dictionary<string, ProcessManagerSubscription>();
 
-        public RunProcessManagers(IEnumerable<ProcessManager> processManagers,
-            EventStoreConnectionString connectionString, EventSerializer eventSerializer)
+        public RunProcessManagers(ProcessManagersSettings settings)
         {
-            _processManagers = processManagers;
-            _connectionString = connectionString;
-            _eventSerializer = eventSerializer;
+            _settings = settings;
         }
 
         public async Task Start(AthenaContext context)
@@ -36,12 +30,12 @@ namespace Athena.EventStore.ProcessManagers
 
             _running = true;
 
-            _connection = _connectionString.CreateConnection(x => x
+            _connection = _settings.GetConnectionString().CreateConnection(x => x
                 .KeepReconnecting()
                 .KeepRetrying()
                 .UseCustomLogger(new EventStoreLog()));
 
-            foreach (var processManager in _processManagers)
+            foreach (var processManager in _settings.GetProcessManagers())
                 await SetupProcessManagerSubscription(processManager, context).ConfigureAwait(false);
         }
 
@@ -79,7 +73,7 @@ namespace Athena.EventStore.ProcessManagers
                     var eventStoreSubscription = _connection.ConnectToPersistentSubscription(processManager.Name,
                         processManager.Name,
                         async (subscription, evnt) =>
-                            await PushEventToProcessManager(processManager, _eventSerializer.DeSerialize(evnt),
+                            await PushEventToProcessManager(processManager, _settings.GetSerializer().DeSerialize(evnt),
                                 subscription, context).ConfigureAwait(false),
                         async (subscription, reason, exception) =>
                             await SubscriptionDropped(processManager, reason, exception, context).ConfigureAwait(false),

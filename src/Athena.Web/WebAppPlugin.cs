@@ -41,7 +41,8 @@ namespace Athena.Web
 
             var outputParsers = new List<ResultParser>
             {
-                new ParseOutputAsJson()
+                new ParseOutputAsJson(),
+                new ParseOutputAsHtml()
             };
 
             var resourceExecutors = new List<ResourceExecutor>

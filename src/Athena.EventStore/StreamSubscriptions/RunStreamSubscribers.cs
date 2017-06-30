@@ -1,19 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Athena.Configuration;
 using Athena.EventStore.Serialization;
 using Athena.Logging;
 using Athena.Processes;
-using Athena.Settings;
 using EventStore.ClientAPI;
 
 namespace Athena.EventStore.StreamSubscriptions
 {
     public class RunStreamSubscribers : LongRunningProcess
     {
-        private readonly EventStoreConnectionString _eventStoreConnectionString;
-        private readonly EventSerializer _eventSerializer;
+        private readonly SubscribersSettings _settings;
 
         private readonly IDictionary<string, IServiceSubscription> _serviceSubscriptions =
             new Dictionary<string, IServiceSubscription>();
@@ -21,11 +18,9 @@ namespace Athena.EventStore.StreamSubscriptions
         private bool _running;
         private IEventStoreConnection _connection;
 
-        public RunStreamSubscribers(EventStoreConnectionString eventStoreConnectionString,
-            EventSerializer eventSerializer)
+        public RunStreamSubscribers(SubscribersSettings settings)
         {
-            _eventStoreConnectionString = eventStoreConnectionString;
-            _eventSerializer = eventSerializer;
+            _settings = settings;
         }
 
         public async Task Start(AthenaContext context)
@@ -35,14 +30,12 @@ namespace Athena.EventStore.StreamSubscriptions
 
             _running = true;
             
-            _connection = _eventStoreConnectionString.CreateConnection(x => x
+            _connection = _settings.GetConnectionString().CreateConnection(x => x
                 .KeepReconnecting()
                 .KeepRetrying()
                 .UseCustomLogger(new EventStoreLog()));
 
-            var settings = ApplicationSettings.GetSettings<SubscribersSettings>();
-
-            var streams = settings.GetSubscribedStreams();
+            var streams = _settings.GetSubscribedStreams();
 
             foreach (var stream in streams)
             {
@@ -88,7 +81,7 @@ namespace Athena.EventStore.StreamSubscriptions
                     //TODO:Handle failing messages
                     var eventstoreSubscription = await _connection.SubscribeToStreamAsync(stream, true,
                             async (subscription, evnt)
-                                => await HandleEvent(_eventSerializer.DeSerialize(evnt), "livesubscription",
+                                => await HandleEvent(_settings.GetSerializer().DeSerialize(evnt), "livesubscription",
                                         x => Logger.Write(LogLevel.Debug,
                                             $"Successfully handled event: {x.OriginalEvent.Event.EventId} on stream: {stream}"),
                                         (x, exception)
@@ -131,7 +124,7 @@ namespace Athena.EventStore.StreamSubscriptions
                 try
                 {
                     var eventstoreSubscription = _connection.ConnectToPersistentSubscription(stream, groupName,
-                        async (subscription, evnt) => await HandleEvent(_eventSerializer.DeSerialize(evnt), 
+                        async (subscription, evnt) => await HandleEvent(_settings.GetSerializer().DeSerialize(evnt), 
                             "persistentsubscription",
                             x =>
                             {

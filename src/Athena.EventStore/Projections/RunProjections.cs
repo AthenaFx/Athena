@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
-using Athena.Configuration;
 using Athena.EventStore.Serialization;
 using Athena.Logging;
 using Athena.Processes;
@@ -14,23 +13,17 @@ namespace Athena.EventStore.Projections
 {
     public class RunProjections : LongRunningProcess
     {
-        private readonly IEnumerable<EventStoreProjection> _projections;
-        private readonly EventStoreConnectionString _eventStoreConnectionString;
-        private readonly EventSerializer _eventSerializer;
+        private readonly ProjectionSettings _settings;
         private readonly ProjectionsPositionHandler _projectionsPositionHandler;
         private bool _running;
         private IEventStoreConnection _connection;
         private readonly IDictionary<string, ProjectionSubscription> _projectionSubscriptions 
             = new Dictionary<string, ProjectionSubscription>();
 
-        public RunProjections(IEnumerable<EventStoreProjection> projections,
-            EventStoreConnectionString eventStoreConnectionString, 
-            ProjectionsPositionHandler projectionsPositionHandler, EventSerializer eventSerializer)
+        public RunProjections(ProjectionSettings settings, ProjectionsPositionHandler projectionsPositionHandler)
         {
-            _projections = projections;
-            _eventStoreConnectionString = eventStoreConnectionString;
+            _settings = settings;
             _projectionsPositionHandler = projectionsPositionHandler;
-            _eventSerializer = eventSerializer;
         }
 
         public async Task Start(AthenaContext context)
@@ -40,12 +33,12 @@ namespace Athena.EventStore.Projections
             
             _running = true;
 
-            _connection = _eventStoreConnectionString.CreateConnection(x => x
+            _connection = _settings.GetConnectionString().CreateConnection(x => x
                 .KeepReconnecting()
                 .KeepRetrying()
                 .UseCustomLogger(new EventStoreLog()));
 
-            foreach (var projection in _projections)
+            foreach (var projection in _settings.GetProjections())
                 await StartProjection(projection, context).ConfigureAwait(false);
         }
 
@@ -67,7 +60,7 @@ namespace Athena.EventStore.Projections
 
         private async Task StartProjection(EventStoreProjection projection, AthenaContext context)
         {
-            await ProjectionInstaller.InstallProjectionFor(projection, _eventStoreConnectionString)
+            await ProjectionInstaller.InstallProjectionFor(projection, _settings.GetConnectionString())
                 .ConfigureAwait(false);
             
             while (true)
@@ -105,7 +98,7 @@ namespace Athena.EventStore.Projections
                     var eventStoreSubscription = _connection.SubscribeToStreamFrom(projection.Name, 
                         await _projectionsPositionHandler.GetLastEvent(projection.Name).ConfigureAwait(false), 
                         CatchUpSubscriptionSettings.Default,
-                        (subscription, evnt) => messageProcessor.OnMessageArrived(_eventSerializer.DeSerialize(evnt)),
+                        (subscription, evnt) => messageProcessor.OnMessageArrived(_settings.GetSerializer().DeSerialize(evnt)),
                         subscriptionDropped: async (subscription, reason, exception) => 
                             await SubscriptionDropped(projection, reason, exception, context).ConfigureAwait(false));
 

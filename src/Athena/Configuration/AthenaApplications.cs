@@ -56,11 +56,11 @@ namespace Athena.Configuration
             return this;
         }
 
-        public AthenaBootstrapper UsingPlugin<TPlugin>(TPlugin plugin) where TPlugin : AthenaPlugin
+        public PartConfiguration<TPlugin> UsingPlugin<TPlugin>(TPlugin plugin) where TPlugin : AthenaPlugin
         {
             _plugins.Add(plugin);
 
-            return this;
+            return new PartConfiguration<TPlugin>(this, plugin);
         }
 
         public IReadOnlyCollection<string> GetDefinedApplications()

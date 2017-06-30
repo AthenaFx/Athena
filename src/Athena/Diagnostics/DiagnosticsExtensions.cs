@@ -7,10 +7,11 @@ namespace Athena.Diagnostics
 {
     public static class DiagnosticsExtensions
     {
-        public static AthenaBootstrapper EnableDiagnostics(this AthenaBootstrapper bootstrapper,
+        public static PartConfiguration<DiagnosticsConfiguration> EnableDiagnostics(
+            this AthenaBootstrapper bootstrapper,
             DiagnosticsDataManager diagnosticsDataManager)
         {
-            return bootstrapper
+            bootstrapper = bootstrapper
                 .When<SetupEvent>()
                 .Do(async (evnt, context) =>
                     {
@@ -34,6 +35,18 @@ namespace Athena.Diagnostics
                     
                     return Task.CompletedTask;
                 });
+
+            var config = new DiagnosticsConfiguration();
+            
+            var allowForEnvironments = new List<string>
+            {
+                "dev",
+                "test"
+            };
+
+            config = allowForEnvironments.Contains(bootstrapper.Environment) ? config.AllowAll() : config.DisallowAll();
+            
+            return new PartConfiguration<DiagnosticsConfiguration>(bootstrapper, config);
         }
     }
 }
