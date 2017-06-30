@@ -71,7 +71,7 @@ namespace Athena.Web.Routing
                 if (current.IsParameterized())
                 {
                     var replacement =
-                        string.Format(CultureInfo.InvariantCulture, @"(?<{0}>(.+?))", segment.GetParameterName());
+                        string.Format(CultureInfo.InvariantCulture, @"(?<{0}>([^\/]+))", segment.GetParameterName());
 
                     current = segment.Replace(segment, replacement);
                 }

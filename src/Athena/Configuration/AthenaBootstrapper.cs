@@ -7,7 +7,7 @@ namespace Athena.Configuration
         string ApplicationName { get; }
         string Environment { get; }
         AthenaBootstrapper WithApplicationName(string name);
-        PartConfiguration<TPlugin> UsingPlugin<TPlugin>(TPlugin plugin) where TPlugin : AthenaPlugin;
+        PartConfiguration<TPlugin> UsingPlugin<TPlugin>(TPlugin plugin) where TPlugin : class, AthenaPlugin;
         BootstrapEventListenerSetup<TEvent> When<TEvent>() where TEvent : SetupEvent;
         Task<AthenaContext> Build();
     }

@@ -22,7 +22,7 @@ namespace Athena.Configuration
             return _bootstrapper.WithApplicationName(name);
         }
 
-        public PartConfiguration<TPlugin> UsingPlugin<TPlugin>(TPlugin plugin) where TPlugin : AthenaPlugin
+        public PartConfiguration<TPlugin> UsingPlugin<TPlugin>(TPlugin plugin) where TPlugin : class, AthenaPlugin
         {
             return _bootstrapper.UsingPlugin(plugin);
         }

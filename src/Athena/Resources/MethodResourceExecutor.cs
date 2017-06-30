@@ -64,7 +64,7 @@ namespace Athena.Resources
             var returnType = taskResult.GetType().GetGenericArguments()[0];
 
             return await (Task<object>) GetType()
-                .GetMethod("HandleAsync", new[] {taskResult.GetType()})
+                .GetMethod("HandleAsync", BindingFlags.Instance | BindingFlags.NonPublic)
                 .MakeGenericMethod(returnType)
                 .Invoke(this, new object[] {taskResult});
         }

@@ -1,10 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
-using Athena.Configuration;
 
 namespace Athena
 {
-    internal static class AthenaContextExtensions
+    public static class AthenaContextExtensions
     {
         public static string ApplicationKey = "_application";
         public static string ContextKey = "_athenacontext";
@@ -14,7 +13,7 @@ namespace Athena
             string application)
         {
             var previousApplication = environment.GetCurrentApplication();
-            var previousContext = environment.GetCurrentContext();
+            var previousContext = environment.GetAthenaContext();
             var previousRequestId = environment.GetRequestId();
             
             environment[ApplicationKey] = application;
@@ -29,7 +28,7 @@ namespace Athena
             return environment.Get(ApplicationKey, "");
         }
 
-        public static AthenaContext GetCurrentContext(this IDictionary<string, object> environment)
+        public static AthenaContext GetAthenaContext(this IDictionary<string, object> environment)
         {
             return environment.Get<AthenaContext>(ContextKey);
         }

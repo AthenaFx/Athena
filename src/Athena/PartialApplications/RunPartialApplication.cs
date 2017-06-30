@@ -10,21 +10,20 @@ namespace Athena.PartialApplications
     public class RunPartialApplication
     {
         private readonly AppFunc _next;
-        private readonly IEnumerable<Tuple<Func<IDictionary<string, object>, bool>, string>> _applications;
-
-        public RunPartialApplication(AppFunc next, 
-            IEnumerable<Tuple<Func<IDictionary<string, object>, bool>, string>> applications)
+        private readonly Func<IDictionary<string, object>, string> _getApplication;
+        
+        public RunPartialApplication(AppFunc next, Func<IDictionary<string, object>, string> getApplication)
         {
-            _applications = applications;
             _next = next;
+            _getApplication = getApplication;
         }
 
         public async Task Invoke(IDictionary<string, object> environment)
         {
-            var application = _applications.FirstOrDefault(x => x.Item1(environment));
+            var application = _getApplication(environment);
 
-            if (application != null)
-                await environment.GetAthenaContext().Execute(application.Item2, environment).ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(application))
+                await environment.GetAthenaContext().Execute(application, environment).ConfigureAwait(false);
 
             await _next(environment);
         }

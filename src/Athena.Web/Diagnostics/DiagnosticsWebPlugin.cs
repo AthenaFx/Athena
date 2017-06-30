@@ -1,11 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 using Athena.Binding;
 using Athena.Configuration;
-using Athena.MetaData;
-using Athena.PartialApplications;
 using Athena.Resources;
 using Athena.Routing;
 using Athena.Transactions;
@@ -15,26 +14,29 @@ using Athena.Web.Parsing;
 using Athena.Web.Routing;
 using Athena.Web.Validation;
 
-namespace Athena.Web
+namespace Athena.Web.Diagnostics
 {
-    public class WebAppPlugin : AthenaPlugin
+    public class DiagnosticsWebPlugin : AthenaPlugin
     {
-        private readonly ICollection<Tuple<Func<IDictionary<string, object>, bool>, string>> _partialApplications 
-            = new List<Tuple<Func<IDictionary<string, object>, bool>, string>>();
-        
+        private readonly string _baseUrl;
+
+        public DiagnosticsWebPlugin(string baseUrl)
+        {
+            _baseUrl = baseUrl;
+        }
+
         public Task Bootstrap(AthenaSetupContext context)
         {
-            var routes = DefaultRouteConventions.BuildRoutes(context.ApplicationAssemblies.ToArray());
-
-            var fileHandlers = new List<StaticFileReader>
-            {
-                new ReadStaticFilesFromFileSystem("index.html", "index.htm")
-            };
+            var routes = DefaultRouteConventions.BuildRoutes(x => $"{_baseUrl}/{x}", 
+                x => x.Namespace == "Athena.Web.Diagnostics.Endpoints.Home",
+                new List<string>
+                {
+                    "Step"
+                }, GetType().GetTypeInfo().Assembly);
 
             var routers = new List<EnvironmentRouter>
             {
-                new UrlPatternRouter(routes, new DefaultRoutePatternMatcher()),
-                new StaticFileRouter(fileHandlers)
+                new UrlPatternRouter(routes, new DefaultRoutePatternMatcher())
             };
 
             var binders = new List<EnvironmentDataBinder>
@@ -71,7 +73,7 @@ namespace Athena.Web
                 new CheckIfMethodResourceExists(binders)
             };
 
-            context.DefineApplication("default_web", builder => builder
+            context.DefineApplication("diagnostics_web", builder => builder
                 .Last("HandleExceptions", next => new HandleExceptions(next, async (exception, environment) =>
                 {
                     var response = environment.GetResponse();
@@ -79,17 +81,20 @@ namespace Athena.Web
 
                     var currentException = exception;
 
+                    var responseText = new StringBuilder();
+
                     while (currentException != null)
                     {
-                        await response.Write(currentException.Message);
-                        await response.Write(currentException.StackTrace);
+                        responseText.Append(currentException.Message);
+                        responseText.Append(currentException.StackTrace);
 
                         currentException = currentException.InnerException;
                     }
+
+                    await response.Write(responseText.ToString());
                 }).Invoke)
                 .Last("MakeSureUrlIsUnique", next => new MakeSureUrlIsUnique(next).Invoke)
                 .Last("HandleTransactions", next => new HandleTransactions(next, Enumerable.Empty<Transaction>()).Invoke)
-                .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
                 .Last("RouteToResource",
                     next => new RouteToResource(next, routers, x => x.GetResponse().StatusCode = 404).Invoke)
                 .Last("EnsureEndpointExists", next => new EnsureEndpointExists(next, routeCheckers).Invoke)
@@ -101,14 +106,6 @@ namespace Athena.Web
                 .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke)
                 .Last("WriteOutput",
                     next => new WriteOutput(next, new FindStatusCodeFromResultWithStatusCode()).Invoke));
-            
-            context.DefineApplication("web", builder => builder
-                .First("RunPartialApplication", next => new RunPartialApplication(next, env =>
-                {
-                    var partialApplication = _partialApplications.FirstOrDefault(x => x.Item1(env));
-
-                    return partialApplication != null ? partialApplication.Item2 : "default_web";
-                }).Invoke));
 
             return Task.CompletedTask;
         }
@@ -116,13 +113,6 @@ namespace Athena.Web
         public Task TearDown(AthenaContext context)
         {
             return Task.CompletedTask;
-        }
-
-        public WebAppPlugin WithPartialApplication(string name, Func<IDictionary<string, object>, bool> use)
-        {
-            _partialApplications.Add(new Tuple<Func<IDictionary<string, object>, bool>, string>(use, name));
-
-            return this;
         }
     }
 }

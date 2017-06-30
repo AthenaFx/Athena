@@ -36,7 +36,8 @@ namespace Athena.Web.ModelBinding
                 new FormDataBindingSource(),
                 new JsonRequestBodyBindingSource(),
                 new PostedFilesBindingSource(),
-                new QueryStringBindingSource()
+                new QueryStringBindingSource(),
+                new RouteResultBindingSource()
             };
 
             return new List<ModelBinder>

@@ -2,6 +2,8 @@
 using System.Reflection;
 using System.Threading.Tasks;
 using Athena.Configuration;
+using Athena.Diagnostics;
+using Athena.Web.Diagnostics;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Owin;
@@ -18,6 +20,8 @@ namespace Athena.Web.Sample
             var athenaContext = await AthenaApplications
                 .From("local", typeof(Program).GetTypeInfo().Assembly)
                 .UsingPlugin(new WebAppPlugin())
+                .EnableDiagnostics(new InMemoryDiagnosticsDataManager())
+                .WithUiAt("_diagnostics")
                 .Build();
             
             var host = new WebHostBuilder()

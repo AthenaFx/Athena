@@ -9,7 +9,8 @@ namespace Athena.Web.ModelBinding
 {
     public static class ModelBindersExtensions
     {
-        public static async Task<DataBinderResult> Bind(this IReadOnlyCollection<ModelBinder> modelBinders, Type type, BindingContext bindingContext)
+        public static async Task<DataBinderResult> Bind(this IReadOnlyCollection<ModelBinder> modelBinders, Type type, 
+            BindingContext bindingContext)
         {
             var binder = GetMatchingBinders(modelBinders, type).FirstOrDefault();
 
@@ -24,7 +25,8 @@ namespace Athena.Web.ModelBinding
 
             var result = await binder.Bind(type, bindingContext).ConfigureAwait(false);
 
-            Logger.Write(LogLevel.Debug, $"Finished binding type: {type} using {binder}. Result: IsValid = {result.Success}, Instance = {result.Result?.ToString() ?? "null"}.");
+            Logger.Write(LogLevel.Debug, 
+                $"Finished binding type: {type} using {binder}. Result: IsValid = {result.Success}, Instance = {result.Result?.ToString() ?? "null"}.");
 
             return result;
         }

@@ -1,16 +1,19 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Athena.Configuration;
-using Athena.PubSub;
 
 namespace Athena.Diagnostics
 {
-    public static class DiagnosticsExtensions
+    public static class ApplicationDiagnostics
     {
+        public static DiagnosticsDataManager DataManager { get; private set; }
+        
         public static PartConfiguration<DiagnosticsConfiguration> EnableDiagnostics(
             this AthenaBootstrapper bootstrapper,
             DiagnosticsDataManager diagnosticsDataManager)
         {
+            DataManager = diagnosticsDataManager;
+            
             bootstrapper = bootstrapper
                 .When<SetupEvent>()
                 .Do(async (evnt, context) =>
@@ -37,15 +40,7 @@ namespace Athena.Diagnostics
                 });
 
             var config = new DiagnosticsConfiguration();
-            
-            var allowForEnvironments = new List<string>
-            {
-                "dev",
-                "test"
-            };
 
-            config = allowForEnvironments.Contains(bootstrapper.Environment) ? config.AllowAll() : config.DisallowAll();
-            
             return new PartConfiguration<DiagnosticsConfiguration>(bootstrapper, config);
         }
     }

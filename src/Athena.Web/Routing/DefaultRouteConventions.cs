@@ -16,13 +16,31 @@ namespace Athena.Web.Routing
             "Delete",
             "Patch"
         });
-
+        
         public static IReadOnlyCollection<Route> BuildRoutes(params Assembly[] assemblies)
+        {
+            return BuildRoutes(x => x, x => true, new List<string>(), assemblies);
+        }
+
+        public static IReadOnlyCollection<Route> BuildRoutes(Func<Type, bool> filter, params Assembly[] assemblies)
+        {
+            return BuildRoutes(x => x, filter, new List<string>(), assemblies);
+        }
+        
+        public static IReadOnlyCollection<Route> BuildRoutes(Func<string, string> alterPattern, 
+            params Assembly[] assemblies)
+        {
+            return BuildRoutes(alterPattern, x => true, new List<string>(), assemblies);
+        }
+
+        public static IReadOnlyCollection<Route> BuildRoutes(Func<string, string> alterPattern, Func<Type, bool> filter, 
+            IReadOnlyCollection<string> extraUrlParameters, params Assembly[] assemblies)
         {
             var availableAssemblies = assemblies.ToList();
 
             var availableMethods = availableAssemblies
                 .SelectMany(x => x.GetTypes())
+                .Where(filter)
                 .SelectMany(x => x.GetMethods())
                 .Where(x => AvailableMethodNames.Contains(x.Name))
                 .ToList();
@@ -44,7 +62,7 @@ namespace Athena.Web.Routing
                 var hasSlug = availableMethod
                     .GetParameters()
                     .Any(x => x.Name.Equals("Slug", StringComparison.OrdinalIgnoreCase)
-                              || x.GetType()
+                              || x.ParameterType
                                   .GetProperties()
                                   .Any(y => y.Name.Equals("Slug", StringComparison.OrdinalIgnoreCase)));
 
@@ -60,14 +78,27 @@ namespace Athena.Web.Routing
                 var hasId = availableMethod
                     .GetParameters()
                     .Any(x => x.Name.Equals("Id", StringComparison.OrdinalIgnoreCase)
-                              || x.GetType()
+                              || x.ParameterType
                                   .GetProperties()
                                   .Any(y => y.Name.Equals("Id", StringComparison.OrdinalIgnoreCase)));
 
                 if(hasId)
                     routeParts.Add("{id}");
 
-                result.Add(new Route(string.Join("/", routeParts), availableMethod, new List<string>
+                foreach (var extraUrlParameter in extraUrlParameters)
+                {
+                    var hasParameter = availableMethod
+                        .GetParameters()
+                        .Any(x => x.Name.Equals(extraUrlParameter, StringComparison.OrdinalIgnoreCase)
+                                  || x.ParameterType
+                                      .GetProperties()
+                                      .Any(y => y.Name.Equals(extraUrlParameter, StringComparison.OrdinalIgnoreCase)));
+                    
+                    if(hasParameter)
+                        routeParts.Add($"{{{extraUrlParameter.ToLower()}}}");
+                }
+
+                result.Add(new Route(alterPattern(string.Join("/", routeParts)), availableMethod, new List<string>
                 {
                     availableMethod.Name.ToUpper()
                 }));

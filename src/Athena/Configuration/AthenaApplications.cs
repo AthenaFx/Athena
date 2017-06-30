@@ -56,8 +56,13 @@ namespace Athena.Configuration
             return this;
         }
 
-        public PartConfiguration<TPlugin> UsingPlugin<TPlugin>(TPlugin plugin) where TPlugin : AthenaPlugin
+        public PartConfiguration<TPlugin> UsingPlugin<TPlugin>(TPlugin plugin) where TPlugin : class, AthenaPlugin
         {
+            var existing = _plugins.FirstOrDefault(x => x.GetType() == plugin.GetType()) as TPlugin;
+
+            if (existing != null)
+                return new PartConfiguration<TPlugin>(this, existing);
+            
             _plugins.Add(plugin);
 
             return new PartConfiguration<TPlugin>(this, plugin);
