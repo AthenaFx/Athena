@@ -3,8 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Athena.Configuration;
 using Athena.EventStore.Serialization;
+using Athena.Logging;
 using Athena.Processes;
+using Athena.PubSub;
 using EventStore.ClientAPI;
 
 namespace Athena.EventStore.Projections
@@ -15,24 +18,22 @@ namespace Athena.EventStore.Projections
         private readonly EventStoreConnectionString _eventStoreConnectionString;
         private readonly EventSerializer _eventSerializer;
         private readonly ProjectionsPositionHandler _projectionsPositionHandler;
-        private readonly AthenaContext _athenaContext;
         private bool _running;
         private IEventStoreConnection _connection;
         private readonly IDictionary<string, ProjectionSubscription> _projectionSubscriptions 
             = new Dictionary<string, ProjectionSubscription>();
 
         public RunProjections(IEnumerable<EventStoreProjection> projections,
-            EventStoreConnectionString eventStoreConnectionString, ProjectionsPositionHandler projectionsPositionHandler, 
-            AthenaContext athenaContext, EventSerializer eventSerializer = null)
+            EventStoreConnectionString eventStoreConnectionString, 
+            ProjectionsPositionHandler projectionsPositionHandler, EventSerializer eventSerializer)
         {
             _projections = projections;
             _eventStoreConnectionString = eventStoreConnectionString;
             _projectionsPositionHandler = projectionsPositionHandler;
-            _athenaContext = athenaContext;
-            _eventSerializer = eventSerializer ?? new JsonEventSerializer();
+            _eventSerializer = eventSerializer;
         }
 
-        public async Task Start()
+        public async Task Start(AthenaContext context)
         {
             if(_running)
                 return;
@@ -45,7 +46,7 @@ namespace Athena.EventStore.Projections
                 .UseCustomLogger(new EventStoreLog()));
 
             foreach (var projection in _projections)
-                await StartProjection(projection).ConfigureAwait(false);
+                await StartProjection(projection, context).ConfigureAwait(false);
         }
 
         public Task Stop()
@@ -64,7 +65,7 @@ namespace Athena.EventStore.Projections
             return Task.CompletedTask;
         }
 
-        private async Task StartProjection(EventStoreProjection projection)
+        private async Task StartProjection(EventStoreProjection projection, AthenaContext context)
         {
             await ProjectionInstaller.InstallProjectionFor(projection, _eventStoreConnectionString)
                 .ConfigureAwait(false);
@@ -89,7 +90,7 @@ namespace Athena.EventStore.Projections
                             x => messageProcessor.MessageArrived += x, x => messageProcessor.MessageArrived -= x)
                         .Buffer(TimeSpan.FromSeconds(1), 5000)
                         .Select(async x => await HandleEvents(projection, x,
-                                y => messageProcessor.OnMessageHandled(y.OriginalEvent.OriginalEventNumber))
+                                y => messageProcessor.OnMessageHandled(y.OriginalEvent.OriginalEventNumber), context)
                             .ConfigureAwait(false))
                         .Subscribe();
 
@@ -106,7 +107,7 @@ namespace Athena.EventStore.Projections
                         CatchUpSubscriptionSettings.Default,
                         (subscription, evnt) => messageProcessor.OnMessageArrived(_eventSerializer.DeSerialize(evnt)),
                         subscriptionDropped: async (subscription, reason, exception) => 
-                            await SubscriptionDropped(projection, reason, exception).ConfigureAwait(false));
+                            await SubscriptionDropped(projection, reason, exception, context).ConfigureAwait(false));
 
                     _projectionSubscriptions[projection.Name] 
                         = new ProjectionSubscription(messageSubscription, messageHandlerSubscription, eventStoreSubscription);
@@ -117,6 +118,9 @@ namespace Athena.EventStore.Projections
                 {
                     if(!_running)
                         return;
+                    
+                    Logger.Write(LogLevel.Error, 
+                        $"Failed to start projection: {projection.GetType().FullName}. Retrying...", e);
 
                     await Task.Delay(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
                 }
@@ -124,15 +128,18 @@ namespace Athena.EventStore.Projections
         }
         
         private async Task SubscriptionDropped(EventStoreProjection projection, SubscriptionDropReason reason, 
-            Exception exception)
+            Exception exception, AthenaContext context)
         {
             if (!_running)
                 return;
-            
-            //TODO:Publish internal event saying the projection failed
 
             if (reason != SubscriptionDropReason.UserInitiated)
-                await StartProjection(projection).ConfigureAwait(false);
+            {
+                Logger.Write(LogLevel.Error, $"Projection {projection.GetType().FullName} failed. Restarting...",
+                    exception);
+                
+                await StartProjection(projection, context).ConfigureAwait(false);
+            }
         }
         
         private void StopProjection(EventStoreProjection projection)
@@ -142,10 +149,12 @@ namespace Athena.EventStore.Projections
 
             _projectionSubscriptions[projection.Name].Close();
             _projectionSubscriptions.Remove(projection.Name);
+            
+            Logger.Write(LogLevel.Info, $"Projection {projection.GetType().FullName} stopped.");
         }
         
         private async Task HandleEvents(EventStoreProjection projection, IEnumerable<DeSerializationResult> events,
-            Action<DeSerializationResult> handled)
+            Action<DeSerializationResult> handled, AthenaContext context)
         {
             if (!_running)
                 return;
@@ -166,12 +175,17 @@ namespace Athena.EventStore.Projections
                     ["context"] = new ProjectionContext(projection, eventsList, handled)
                 };
 
-                await _athenaContext.Execute("esprojection", requestEnvironment).ConfigureAwait(false);
+                await context.Execute("esprojection", requestEnvironment).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                //TODO:Mark service as failing to we can report that via consul
+                Logger.Write(LogLevel.Error, 
+                    $"Projection {projection.GetType().FullName} has failing handlers. Stopping...", ex);
+                
                 StopProjection(projection);
+                
+                await EventPublishing.Publish(new ProjectionFailed(projection.GetType(), ex))
+                    .ConfigureAwait(false);
             }
         }
     }

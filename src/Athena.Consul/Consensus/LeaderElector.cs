@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Athena.Configuration;
 using Athena.Consensus;
 using Athena.Logging;
 using Athena.Processes;
@@ -13,21 +14,22 @@ namespace Athena.Consul.Consensus
     public class LeaderElector : LongRunningProcess
     {
         private readonly string _serviceName;
+        private readonly Func<ConsulClient> _getClient;
         private CancellationTokenSource _cancellationTokenSource;
         private NodeRole _currentRole = NodeRole.Follower;
         private IDistributedLock _lock;
 
-        public LeaderElector(string serviceName)
+        public LeaderElector(string serviceName, Func<ConsulClient> getClient)
         {
             _serviceName = serviceName;
+            _getClient = getClient;
         }
 
-        public Task Start()
+        public Task Start(AthenaContext context)
         {
             _cancellationTokenSource = new CancellationTokenSource();
             
-            //TODO:Configure
-            var client = new ConsulClient();
+            var client = _getClient();
             
             _lock = client.CreateLock($"service/{_serviceName}/leader");
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using Athena.Configuration;
 
 namespace Athena.Settings
 {
@@ -12,13 +13,15 @@ namespace Athena.Settings
             return (TSetting) Settings.GetOrAdd(typeof(TSetting), x => new TSetting());
         }
 
-        public static void AlterSettings<TSetting>(this AthenaBootstrapper bootstrapper, Func<TSetting, TSetting> alter) 
+        public static AthenaBootstrapper AlterSettings<TSetting>(this AthenaBootstrapper bootstrapper, Func<TSetting, TSetting> alter) 
             where TSetting : new()
         {
             //TODO:Lock correctly
             var settings = GetSettings<TSetting>();
 
             Settings[typeof(TSetting)] = alter(settings);
+
+            return bootstrapper;
         }
     }
 }

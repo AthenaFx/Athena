@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Athena.Logging;
 using EventStore.ClientAPI.Projections;
 using EventStore.ClientAPI.SystemData;
 
@@ -15,9 +16,9 @@ namespace Athena.EventStore
             {
                 currentProjection = await projectionsManager.GetQueryAsync(name, credentials).ConfigureAwait(false);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                //TODO:Log error
+                Logger.Write(LogLevel.Info, $"Failed getting es projection \"{name}\"", ex);
             }
 
             if (string.IsNullOrEmpty(currentProjection))

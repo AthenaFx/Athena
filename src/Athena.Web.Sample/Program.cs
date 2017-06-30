@@ -1,5 +1,7 @@
 ﻿using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
+using Athena.Configuration;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Owin;
@@ -9,11 +11,14 @@ namespace Athena.Web.Sample
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static void Main(string[] args) => MainAsync().GetAwaiter().GetResult();
+
+        private static async Task MainAsync()
         {
-            var athenaApplication = AthenaApplications
-                .Bootsrap(typeof(Program).GetTypeInfo().Assembly)
-                .Result;
+            var athenaContext = await AthenaApplications
+                .From("local", typeof(Program).GetTypeInfo().Assembly)
+                .UsingPlugin(new WebAppPlugin())
+                .Build();
             
             var host = new WebHostBuilder()
                 .UseKestrel()
@@ -21,18 +26,13 @@ namespace Athena.Web.Sample
                 .ConfigureLogging(x => x.AddConsole())
                 .Configure(app =>
                 {
-                    app.Run(async context =>
-                    {
-                        var owinEnvironment = new OwinEnvironment(context);
-
-                        await athenaApplication.Execute("web", owinEnvironment);
-                    });
+                    app.Run(context => athenaContext.Execute("web", new OwinEnvironment(context)));
                 })
                 .Build();
 
             host.Run();
 
-            athenaApplication.ShutDown().Wait();
+            athenaContext.ShutDown().Wait();
         }
     }
 }

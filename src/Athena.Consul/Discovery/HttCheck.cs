@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Athena.Messages;
+using Athena.Configuration;
 using Athena.PubSub;
 using Consul;
 
@@ -10,54 +10,37 @@ namespace Athena.Consul.Discovery
     public static class HttCheck
     {
         public static AthenaBootstrapper UseConsulHttpCheck(this AthenaBootstrapper bootstrapper, TimeSpan interval, 
-            Uri url)
+            Uri url, string address = null, int port = 0, string id = null, IEnumerable<string> tags = null, 
+            Func<ConsulClient> getClient = null)
         {
-            var id = $"{Environment.MachineName.ToLower()}-{bootstrapper.ApplicationName.ToLower()}";
-
-            return bootstrapper.UseConsulHttpCheck(interval, url, id);
-        }
-
-        public static AthenaBootstrapper UseConsulHttpCheck(this AthenaBootstrapper bootstrapper, TimeSpan interval,
-            Uri url, string id)
-        {
-            return bootstrapper.UseConsulHttpCheck(interval, url, id, "", 0);
-        }
-        
-        public static AthenaBootstrapper UseConsulHttpCheck(this AthenaBootstrapper bootstrapper, TimeSpan interval,
-            Uri url, string id, string address, int port)
-        {
-            return bootstrapper.UseConsulHttpCheck(interval, url, id, address, port, Enumerable.Empty<string>());
-        }
-        
-        public static AthenaBootstrapper UseConsulHttpCheck(this AthenaBootstrapper bootstrapper, TimeSpan interval, 
-            Uri url, string id, string address, int port, IEnumerable<string> tags)
-        {
+            id = id ?? $"{Environment.MachineName.ToLower()}-{bootstrapper.ApplicationName.ToLower()}";
             var checkId = $"service:{id}:http";
+            getClient = getClient ?? (() => new ConsulClient());
 
-            EventPublishing.Subscribe<BootstrapCompleted>(async x =>
-            {
-                var client = new ConsulClient();
-                
-                await client.Agent.ServiceRegister(new AgentServiceRegistration
+            return bootstrapper
+                .When<BootstrapCompleted>()
+                .Do(async (evnt, context) =>
                 {
-                    Name = bootstrapper.ApplicationName,
-                    ID = id,
-                    Address = address,
-                    Port = port,
-                    Tags = tags.ToArray()
-                }).ConfigureAwait(false);
+                    var client = getClient();
                 
-                await client.Agent.CheckRegister(new AgentCheckRegistration
-                {
-                    ServiceID = id,
-                    Name = $"Service '{bootstrapper.ApplicationName}' http check",
-                    ID = checkId,
-                    Status = HealthStatus.Passing,
-                    HTTP = url.ToString()
+                    await client.Agent.ServiceRegister(new AgentServiceRegistration
+                    {
+                        Name = bootstrapper.ApplicationName,
+                        ID = id,
+                        Address = address,
+                        Port = port,
+                        Tags = tags.ToArray()
+                    }).ConfigureAwait(false);
+                
+                    await client.Agent.CheckRegister(new AgentCheckRegistration
+                    {
+                        ServiceID = id,
+                        Name = $"Service '{bootstrapper.ApplicationName}' http check",
+                        ID = checkId,
+                        Status = HealthStatus.Passing,
+                        HTTP = url.ToString()
+                    });
                 });
-            });
-
-            return bootstrapper;
         }
     }
 }

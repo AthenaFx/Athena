@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Athena
+namespace Athena.Configuration
 {
     using AppFunc = Func<IDictionary<string, object>, Task>;
 

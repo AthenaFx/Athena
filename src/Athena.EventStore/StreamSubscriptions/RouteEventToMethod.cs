@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
+using Athena.Configuration;
 using Athena.EventStore.Serialization;
 using Athena.Routing;
 
@@ -25,9 +26,9 @@ namespace Athena.EventStore.StreamSubscriptions
                     .Any(y => y.ParameterType == evnt.Data.GetType()));
         }
 
-        public static RouteEventToMethod New(Func<MethodInfo, bool> filter)
+        public static RouteEventToMethod New(Func<MethodInfo, bool> filter, IEnumerable<Assembly> assemblies)
         {
-            var methods = AthenaApplications.ApplicationAssemblies
+            var methods = assemblies
                 .SelectMany(x => x.GetTypes())
                 .SelectMany(x => x.GetMethods(BindingFlags.Instance | BindingFlags.Public))
                 .Where(filter)

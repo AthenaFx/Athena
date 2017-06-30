@@ -2,10 +2,10 @@
 {
     public class ProcessManagerTimedOut
     {
-        public ProcessManagerTimedOut(string process, object @event)
+        public ProcessManagerTimedOut(string process, object evnt)
         {
             Process = process;
-            Event = @event;
+            Event = evnt;
         }
 
         public string Process { get; }

@@ -17,7 +17,9 @@ namespace Athena.Routing
         {
             var method = Route(environment, _availableMethods);
 
-            return Task.FromResult<RouterResult>(method == null ? null : new MethodResourceRouterResult(method, new Dictionary<string, object>()));
+            return Task.FromResult<RouterResult>(method == null 
+                ? null 
+                : new MethodResourceRouterResult(method, new Dictionary<string, object>()));
         }
 
         protected abstract MethodInfo Route(IDictionary<string, object> environment,

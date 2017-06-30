@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Athena.Configuration;
 
 namespace Athena.CommandHandling
 {

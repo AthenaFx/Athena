@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Athena.Configuration;
 
 namespace Athena.PubSub
 {
@@ -7,7 +8,8 @@ namespace Athena.PubSub
     {
         private static EventPublisher _publisher = new InMemoryEventPublisher();
 
-        public static AthenaBootstrapper UseEventPublisher(this AthenaBootstrapper bootstrapper, EventPublisher publisher)
+        public static AthenaBootstrapper UseEventPublisher(this AthenaBootstrapper bootstrapper, 
+            EventPublisher publisher)
         {
             _publisher = publisher;
 

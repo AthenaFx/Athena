@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using Athena.EventStore.Serialization;
 
 namespace Athena.EventStore.Projections

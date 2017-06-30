@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Athena.Binding;
+using Athena.Configuration;
 using Athena.MetaData;
 using Athena.Resources;
 using Athena.Routing;
@@ -12,20 +13,20 @@ namespace Athena.EventStore.StreamSubscriptions
 {
     public class SubscriptionsPlugin : AthenaPlugin
     {
-        public Task Bootstrap(AthenaBootstrapper context)
+        public Task Bootstrap(AthenaSetupContext context)
         {
             var routers = new List<EnvironmentRouter>
             {
                 RouteEventToMethod.New(x => x.Name == "Subscribe"
                                               && (x.ReturnType == typeof(void) || x.ReturnType == typeof(Task))
-                                              && x.GetParameters().Length == 1)
-            }.AsReadOnly();
+                                              && x.GetParameters().Length == 1, context.ApplicationAssemblies)
+            };
 
             var binders = new List<EnvironmentDataBinder>
             {
                 new BindEnvironment(),
                 new EventDataBinder()
-            }.AsReadOnly();
+            };
 
             var resourceExecutors = new List<ResourceExecutor>
             {
@@ -37,18 +38,18 @@ namespace Athena.EventStore.StreamSubscriptions
                 .Last("HandleTransactions", next => new HandleTransactions(next, Enumerable.Empty<Transaction>()).Invoke)
                 .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
                 .Last("RouteToResource", next => new RouteToResource(next, routers).Invoke)
-                .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke), false);
+                .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke));
             
             context.DefineApplication("persistentsubscription", builder => builder
                 .Last("HandleTransactions", next => new HandleTransactions(next, Enumerable.Empty<Transaction>()).Invoke)
                 .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
                 .Last("RouteToResource", next => new RouteToResource(next, routers).Invoke)
-                .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke), false);
+                .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke));
             
             return Task.CompletedTask;
         }
 
-        public Task TearDown(AthenaBootstrapper context)
+        public Task TearDown(AthenaContext context)
         {
             return Task.CompletedTask;
         }

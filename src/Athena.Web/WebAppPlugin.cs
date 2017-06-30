@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Athena.Binding;
+using Athena.Configuration;
 using Athena.MetaData;
 using Athena.Resources;
 using Athena.Routing;
@@ -16,9 +17,9 @@ namespace Athena.Web
 {
     public class WebAppPlugin : AthenaPlugin
     {
-        public Task Bootstrap(AthenaBootstrapper context)
+        public Task Bootstrap(AthenaSetupContext context)
         {
-            var routes = DefaultRouteConventions.BuildRoutes();
+            var routes = DefaultRouteConventions.BuildRoutes(context.ApplicationAssemblies.ToArray());
 
             var fileHandlers = new List<StaticFileReader>
             {
@@ -84,12 +85,12 @@ namespace Athena.Web
                 .Last("ValidateCache", next => new ValidateCache(next, routerCacheDataFinders).Invoke)
                 .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke)
                 .Last("WriteOutput",
-                    next => new WriteOutput(next, new FindStatusCodeFromResultWithStatusCode()).Invoke), false);
+                    next => new WriteOutput(next, new FindStatusCodeFromResultWithStatusCode()).Invoke));
 
             return Task.CompletedTask;
         }
 
-        public Task TearDown(AthenaBootstrapper context)
+        public Task TearDown(AthenaContext context)
         {
             return Task.CompletedTask;
         }

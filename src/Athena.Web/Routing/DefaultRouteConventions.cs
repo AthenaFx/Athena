@@ -21,9 +21,6 @@ namespace Athena.Web.Routing
         {
             var availableAssemblies = assemblies.ToList();
 
-            if (!availableAssemblies.Any())
-                availableAssemblies = AthenaApplications.ApplicationAssemblies.ToList();
-
             var availableMethods = availableAssemblies
                 .SelectMany(x => x.GetTypes())
                 .SelectMany(x => x.GetMethods())

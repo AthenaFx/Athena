@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Athena.Configuration;
 using Athena.Logging;
 using Athena.Processes;
 using Athena.PubSub;
@@ -21,7 +22,7 @@ namespace Athena.ApplicationTimeouts
             _secondsToSleepBetweenPolls = secondsToSleepBetweenPolls;
         }
 
-        public Task Start()
+        public Task Start(AthenaContext context)
         {
             var timeoutStore = _getTimeoutStore();
             

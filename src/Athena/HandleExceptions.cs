@@ -31,7 +31,8 @@ namespace Athena
 
                 await _onError(ex, environment);
 
-                Logger.Write(LogLevel.Error, $"Exception while executing application: {environment.GetCurrentApplication()}", ex);
+                Logger.Write(LogLevel.Error, 
+                    $"Exception while executing application: {environment.GetCurrentApplication()}", ex);
             }
         }
     }}

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Athena.Configuration;
 using Athena.EventStore.Serialization;
 using Athena.Logging;
 using Athena.Processes;
@@ -13,7 +14,6 @@ namespace Athena.EventStore.ProcessManagers
         private readonly IEnumerable<ProcessManager> _processManagers;
         private readonly EventStoreConnectionString _connectionString;
         private readonly EventSerializer _eventSerializer;
-        private readonly AthenaContext _athenaContext;
 
         private IEventStoreConnection _connection;
         private bool _running;
@@ -22,15 +22,14 @@ namespace Athena.EventStore.ProcessManagers
             new Dictionary<string, ProcessManagerSubscription>();
 
         public RunProcessManagers(IEnumerable<ProcessManager> processManagers,
-            EventStoreConnectionString connectionString, EventSerializer eventSerializer, AthenaContext athenaContext)
+            EventStoreConnectionString connectionString, EventSerializer eventSerializer)
         {
             _processManagers = processManagers;
             _connectionString = connectionString;
             _eventSerializer = eventSerializer;
-            _athenaContext = athenaContext;
         }
 
-        public async Task Start()
+        public async Task Start(AthenaContext context)
         {
             if (_running)
                 return;
@@ -43,7 +42,7 @@ namespace Athena.EventStore.ProcessManagers
                 .UseCustomLogger(new EventStoreLog()));
 
             foreach (var processManager in _processManagers)
-                await SetupProcessManagerSubscription(processManager).ConfigureAwait(false);
+                await SetupProcessManagerSubscription(processManager, context).ConfigureAwait(false);
         }
 
         public Task Stop()
@@ -62,7 +61,7 @@ namespace Athena.EventStore.ProcessManagers
             return Task.CompletedTask;
         }
 
-        protected virtual async Task SetupProcessManagerSubscription(ProcessManager processManager)
+        protected virtual async Task SetupProcessManagerSubscription(ProcessManager processManager, AthenaContext context)
         {
             while (true)
             {
@@ -81,9 +80,9 @@ namespace Athena.EventStore.ProcessManagers
                         processManager.Name,
                         async (subscription, evnt) =>
                             await PushEventToProcessManager(processManager, _eventSerializer.DeSerialize(evnt),
-                                subscription).ConfigureAwait(false),
+                                subscription, context).ConfigureAwait(false),
                         async (subscription, reason, exception) =>
-                            await SubscriptionDropped(processManager, reason, exception).ConfigureAwait(false),
+                            await SubscriptionDropped(processManager, reason, exception, context).ConfigureAwait(false),
                         autoAck: false);
 
                     _processManagerSubscriptions[processManager.Name] =
@@ -105,7 +104,7 @@ namespace Athena.EventStore.ProcessManagers
         }
 
         protected virtual async Task PushEventToProcessManager(ProcessManager processManager,
-            DeSerializationResult evnt, EventStorePersistentSubscriptionBase subscription)
+            DeSerializationResult evnt, EventStorePersistentSubscriptionBase subscription, AthenaContext context)
         {
             if (!_running)
                 return;
@@ -123,7 +122,7 @@ namespace Athena.EventStore.ProcessManagers
                     ["context"] = new ProcessManagerExecutionContext(processManager, evnt)
                 };
 
-                await _athenaContext.Execute("esprocessmanager", requestEnvironment).ConfigureAwait(false);
+                await context.Execute("esprocessmanager", requestEnvironment).ConfigureAwait(false);
                 
                 subscription.Acknowledge(evnt.OriginalEvent);
             }
@@ -136,7 +135,7 @@ namespace Athena.EventStore.ProcessManagers
         }
 
         protected virtual Task SubscriptionDropped(ProcessManager processManager, SubscriptionDropReason reason,
-            Exception exception)
+            Exception exception, AthenaContext context)
         {
             if (!_running)
                 return Task.CompletedTask;
@@ -146,7 +145,7 @@ namespace Athena.EventStore.ProcessManagers
                 exception);
 
             if (reason != SubscriptionDropReason.UserInitiated)
-                return SetupProcessManagerSubscription(processManager);
+                return SetupProcessManagerSubscription(processManager, context);
 
             return Task.CompletedTask;
         }

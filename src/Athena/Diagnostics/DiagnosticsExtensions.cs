@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
-using Athena.Messages;
+using System.Threading.Tasks;
+using Athena.Configuration;
 using Athena.PubSub;
 
 namespace Athena.Diagnostics
@@ -9,23 +10,30 @@ namespace Athena.Diagnostics
         public static AthenaBootstrapper EnableDiagnostics(this AthenaBootstrapper bootstrapper,
             DiagnosticsDataManager diagnosticsDataManager)
         {
-            foreach (var application in bootstrapper.GetDefinedApplications())
-            {
-                bootstrapper.ConfigureApplication(application, builder => builder.WrapAllWith((next, nextItem) =>
-                    new DiagnoseInnerBehavior(next, nextItem, diagnosticsDataManager).Invoke));
-            }
-            
-            EventPublishing.Subscribe<BootstrapCompleted>(async x =>
-            {
-                await diagnosticsDataManager.AddDiagnostics("Setup", DiagnosticsTypes.Bootstrapping, "Init",
-                    new DiagnosticsData("BootstrapCompleted", new Dictionary<string, DiagnosticsValue>
+            return bootstrapper
+                .When<SetupEvent>()
+                .Do(async (evnt, context) =>
                     {
-                        ["ExecutionTime"] = new ObjectDiagnosticsValue(x.ExecutionTime),
-                        ["ApplicationName"] = new ObjectDiagnosticsValue(bootstrapper.ApplicationName)
-                    })).ConfigureAwait(false);
-            });
-
-            return bootstrapper;
+                        await diagnosticsDataManager.AddDiagnostics("Setup", DiagnosticsTypes.Bootstrapping, "Init",
+                            new DiagnosticsData(evnt.GetType().Name, new Dictionary<string, DiagnosticsValue>
+                            {
+                                ["ExecutionTime"] = new ObjectDiagnosticsValue(evnt.ExecutionTime),
+                                ["ApplicationName"] = new ObjectDiagnosticsValue(context.ApplicationName),
+                                ["Environment"] = new ObjectDiagnosticsValue(context.Environment)
+                            })).ConfigureAwait(false);
+                    })
+                .When<AllPluginsBootstrapped>()
+                .Do((evnt, context) =>
+                {
+                    foreach (var application in context.GetDefinedApplications())
+                    {
+                        context.ConfigureApplication(application, 
+                            builder => builder.WrapAllWith((next, nextItem) =>
+                                new DiagnoseInnerBehavior(next, nextItem, diagnosticsDataManager).Invoke));
+                    }
+                    
+                    return Task.CompletedTask;
+                });
         }
     }
 }

@@ -2,11 +2,14 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Athena.Configuration;
 
 namespace Athena.MetaData
 {
     public static class MetaDataManagement
     {
+        public const string MetaDataKey = "application-meta-data";
+        
         private static readonly
             ICollection<Tuple<Func<IDictionary<string, object>, bool>,
                 Func<IDictionary<string, object>, MetaDataSupplier>>> Suppliers =
@@ -33,6 +36,12 @@ namespace Athena.MetaData
             return bootstrapper;
         }
 
+        public static IReadOnlyDictionary<string, object> GetMetaData(this IDictionary<string, object> environment)
+        {
+            return environment.Get<IReadOnlyDictionary<string, object>>(MetaDataKey,
+                new Dictionary<string, object>());
+        }
+
         internal static IDisposable GatherMetaData(IDictionary<string, object> environment)
         {
             var suppliers = Suppliers
@@ -51,9 +60,7 @@ namespace Athena.MetaData
             public MetaDataDisposable(IEnumerable<MetaDataSupplier> suppliers, 
                 IDictionary<string, object> environment)
             {
-                var previousMetaData =
-                    environment.Get<IReadOnlyDictionary<string, object>>("application-meta-data",
-                        new Dictionary<string, object>());
+                var previousMetaData = environment.GetMetaData();
                 
                 _previousMetaData = previousMetaData;
                 _environment = environment;
@@ -67,12 +74,12 @@ namespace Athena.MetaData
                         newMetaData[item.Key] = item.Value;
                 }
 
-                environment["application-meta-data"] = new ReadOnlyDictionary<string, object>(newMetaData);
+                environment[MetaDataKey] = new ReadOnlyDictionary<string, object>(newMetaData);
             }
 
             public void Dispose()
             {
-                _environment["application-meta-data"] = _previousMetaData;
+                _environment[MetaDataKey] = _previousMetaData;
             }
         }
     }

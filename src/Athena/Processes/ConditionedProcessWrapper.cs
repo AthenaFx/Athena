@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Athena.Configuration;
 
 namespace Athena.Processes
 {
@@ -10,19 +11,20 @@ namespace Athena.Processes
         private bool _shouldRun;
         private bool _started;
 
-        public ConditionedProcessWrapper(LongRunningProcess inner, Func<Func<bool, Task>, Task> subscribeToChanges)
+        public ConditionedProcessWrapper(LongRunningProcess inner, 
+            Func<Func<bool, AthenaContext, Task>, Task> subscribeToChanges)
         {
             _inner = inner;
             subscribeToChanges(ChangeRunning);
         }
 
-        public async Task Start()
+        public async Task Start(AthenaContext context)
         {
             _started = true;
 
             if (_shouldRun && !_isRunning)
             {
-                await _inner.Start().ConfigureAwait(false);
+                await _inner.Start(context).ConfigureAwait(false);
 
                 _isRunning = true;
             }
@@ -40,7 +42,7 @@ namespace Athena.Processes
             }
         }
 
-        private async Task ChangeRunning(bool shouldRun)
+        private async Task ChangeRunning(bool shouldRun, AthenaContext context)
         {
             //TODO:Refactor and make sure we lock correctly
             _shouldRun = shouldRun;
@@ -50,7 +52,7 @@ namespace Athena.Processes
 
             if (_shouldRun && !_isRunning)
             {
-                await _inner.Start().ConfigureAwait(false);
+                await _inner.Start(context).ConfigureAwait(false);
 
                 _isRunning = true;
             }

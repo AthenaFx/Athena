@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Athena.Configuration;
 using Athena.Logging;
 using Athena.Processes;
 using Consul;
@@ -15,15 +16,14 @@ namespace Athena.Consul.Discovery
         private readonly TimeSpan _interval;
         private readonly string _checkId;
         
-        public SendTtlDataToConsul(TimeSpan interval, string checkId)
+        public SendTtlDataToConsul(TimeSpan interval, string checkId, ConsulClient client)
         {
             _interval = interval;
             _checkId = checkId;
-            //TODO:Configure
-            _client = new ConsulClient();
+            _client = client;
         }
         
-        public Task Start()
+        public Task Start(AthenaContext context)
         {
             _cancellationTokenSource = new CancellationTokenSource();
             

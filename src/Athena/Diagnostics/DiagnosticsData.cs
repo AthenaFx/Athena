@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace Athena.Diagnostics
 {
@@ -11,7 +10,7 @@ namespace Athena.Diagnostics
             Data = data ?? new Dictionary<string, DiagnosticsValue>();
         }
 
-        public string Key { get; private set; }
+        public string Key { get; }
         public IReadOnlyDictionary<string, DiagnosticsValue> Data { get; }
     }
 }

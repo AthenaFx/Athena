@@ -41,7 +41,8 @@ namespace Athena.EventStore
 
         public ProjectionsManager CreateProjectionsManager()
         {
-            return new ProjectionsManager(new ConsoleLogger(), _connectionOptions.GetHttpIpEndPoint(), TimeSpan.FromMilliseconds(5000));
+            return new ProjectionsManager(new ConsoleLogger(), _connectionOptions.GetHttpIpEndPoint(), 
+                TimeSpan.FromMilliseconds(5000));
         }
 
         public UserCredentials GetUserCredentials()

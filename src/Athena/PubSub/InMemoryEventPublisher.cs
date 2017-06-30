@@ -18,7 +18,7 @@ namespace Athena.PubSub
             {
                 var subscriptions = Subscriptions.Where(x => x.Value.SubscribedTo == type).ToList();
 
-                await Task.WhenAll(subscriptions.Select(x => x.Value.Handle(evnt)));
+                await Task.WhenAll(subscriptions.Select(x => x.Value.Handle(evnt))).ConfigureAwait(false);
             }
         }
 

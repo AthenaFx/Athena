@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
+using Athena.Configuration;
 using Athena.Routing;
 
 namespace Athena.CommandHandling
@@ -20,9 +21,10 @@ namespace Athena.CommandHandling
             return command == null ? null : availableMethods.FirstOrDefault(x => x.GetParameters().Any(y => y.ParameterType == command.GetType()));
         }
 
-        public static RouteCommandToMethod New(Func<MethodInfo, bool> filter)
+        public static RouteCommandToMethod New(Func<MethodInfo, bool> filter, 
+            IReadOnlyCollection<Assembly> applicationAssemblies)
         {
-            var methods = AthenaApplications.ApplicationAssemblies
+            var methods = applicationAssemblies
                 .SelectMany(x => x.GetTypes())
                 .SelectMany(x => x.GetMethods(BindingFlags.Instance | BindingFlags.Public))
                 .Where(filter)
