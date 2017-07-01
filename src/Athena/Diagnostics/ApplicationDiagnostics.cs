@@ -1,47 +1,57 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using System;
+using System.Linq;
+using System.Reflection;
 using Athena.Configuration;
+using Athena.PubSub;
 
 namespace Athena.Diagnostics
 {
     public static class ApplicationDiagnostics
     {
-        public static DiagnosticsDataManager DataManager { get; private set; }
-        
         public static PartConfiguration<DiagnosticsConfiguration> EnableDiagnostics(
-            this AthenaBootstrapper bootstrapper,
-            DiagnosticsDataManager diagnosticsDataManager)
+            this AthenaBootstrapper bootstrapper)
         {
-            DataManager = diagnosticsDataManager;
-            
-            bootstrapper = bootstrapper
-                .When<SetupEvent>()
-                .Do(async (evnt, context) =>
-                    {
-                        await diagnosticsDataManager.AddDiagnostics("Setup", DiagnosticsTypes.Bootstrapping, "Init",
-                            new DiagnosticsData(evnt.GetType().Name, new Dictionary<string, DiagnosticsValue>
-                            {
-                                ["ExecutionTime"] = new ObjectDiagnosticsValue(evnt.ExecutionTime),
-                                ["ApplicationName"] = new ObjectDiagnosticsValue(context.ApplicationName),
-                                ["Environment"] = new ObjectDiagnosticsValue(context.Environment)
-                            })).ConfigureAwait(false);
-                    })
-                .When<AllPluginsBootstrapped>()
-                .Do((evnt, context) =>
+            EventPublishing.Subscribe<SetupEvent>(async (evnt, context) =>
+            {
+                var data = evnt
+                    .GetType()
+                    .GetProperties()
+                    .Where(x => x.CanRead)
+                    .ToDictionary(x => x.Name, x => x.GetValue(evnt).ToString());
+                
+                await context.GetSetting<DiagnosticsConfiguration>()
+                    .DataManager
+                    .AddDiagnostics("Setup", DiagnosticsTypes.Bootstrapping, "Init",
+                    new DiagnosticsData($"{evnt.GetType().Name}-{Guid.NewGuid():N}", data)).ConfigureAwait(false);
+            });
+
+            EventPublishing.Subscribe<ShutdownEvent>(async (evnt, context) =>
+            {
+                var data = evnt
+                    .GetType()
+                    .GetProperties()
+                    .Where(x => x.CanRead)
+                    .ToDictionary(x => x.Name, x => x.GetValue(evnt).ToString());
+                
+                await context.GetSetting<DiagnosticsConfiguration>()
+                    .DataManager
+                    .AddDiagnostics("Setup", DiagnosticsTypes.Shutdown, "Shutdown",
+                    new DiagnosticsData($"{evnt.GetType().Name}-{Guid.NewGuid():N}", data)).ConfigureAwait(false);
+            });
+
+            return bootstrapper
+                .ConfigureWith<DiagnosticsConfiguration, ApplicationDefined>((conf, evnt, context) =>
                 {
-                    foreach (var application in context.GetDefinedApplications())
-                    {
-                        context.ConfigureApplication(application, 
-                            builder => builder.WrapAllWith((next, nextItem) =>
-                                new DiagnoseInnerBehavior(next, nextItem, diagnosticsDataManager).Invoke));
-                    }
-                    
-                    return Task.CompletedTask;
+                    return context.UpdateApplication(evnt.Name,
+                        builder => builder.WrapAllWith((next, nextItem) =>
+                            new DiagnoseInnerBehavior(next, nextItem, conf.DataManager).Invoke));
                 });
+        }
 
-            var config = new DiagnosticsConfiguration();
-
-            return new PartConfiguration<DiagnosticsConfiguration>(bootstrapper, config);
+        public static PartConfiguration<DiagnosticsConfiguration> StoreDiagnosticsWith(
+            this PartConfiguration<DiagnosticsConfiguration> config, DiagnosticsDataManager dataManager)
+        {
+            return config.UpdateSettings(x => x.UsingDataManager(dataManager));
         }
     }
 }

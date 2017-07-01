@@ -7,9 +7,13 @@ namespace Athena.Web.Diagnostics.Endpoints.Home
 {
     public class Details
     {
-        public async Task<DetailsGetResult> Get(DetailsGetInput input)
+        public async Task<DetailsGetResult> Get(DetailsGetInput input, AthenaContext context)
         {
-            var types = await ApplicationDiagnostics.DataManager.GetTypesFor(input.Slug).ConfigureAwait(false);
+            var types = await context
+                .GetSetting<DiagnosticsConfiguration>()
+                .DataManager
+                .GetTypesFor(input.Slug)
+                .ConfigureAwait(false);
 
             return new DetailsGetResult(input.Slug, types);
         }

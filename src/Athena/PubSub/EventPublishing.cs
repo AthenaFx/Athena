@@ -16,12 +16,18 @@ namespace Athena.PubSub
             return bootstrapper;
         }
 
-        public static Task Publish(object evnt)
+        public static Task Publish(this SettingsContext context, object evnt)
         {
-            return _publisher.Publish(evnt);
+            return _publisher.Publish(evnt, context);
         }
 
         public static EventSubscription Subscribe<TEvent>(Func<TEvent, Task> subscription, string id = null)
+        {
+            return _publisher.Subscribe<TEvent>((evnt, context) => subscription(evnt), id);
+        }
+        
+        public static EventSubscription Subscribe<TEvent>(Func<TEvent, SettingsContext, Task> subscription, 
+            string id = null)
         {
             return _publisher.Subscribe(subscription, id);
         }

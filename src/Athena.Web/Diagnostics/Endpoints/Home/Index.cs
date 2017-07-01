@@ -7,9 +7,10 @@ namespace Athena.Web.Diagnostics.Endpoints.Home
 {
     public class Index
     {
-        public async Task<IndexGetResult> Get()
+        public async Task<IndexGetResult> Get(AthenaContext context)
         {
-            var applications = await ApplicationDiagnostics
+            var applications = await context
+                .GetSetting<DiagnosticsConfiguration>()
                 .DataManager
                 .GetApplications()
                 .ConfigureAwait(false);

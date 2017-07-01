@@ -17,6 +17,13 @@ namespace Athena.Configuration
         private readonly ICollection<Func<AppFunc, string, AppFunc>> _wrappers 
             = new List<Func<AppFunc, string, AppFunc>>();
 
+        public AppFunctionBuilder(AthenaBootstrapper bootstrapper)
+        {
+            Bootstrapper = bootstrapper;
+        }
+
+        public AthenaBootstrapper Bootstrapper { get; }
+
         public AppFunctionBuilder Replace(string item, string name, Func<AppFunc, AppFunc> builder)
         {
             _appFunctionFactories[name] = builder;
@@ -78,6 +85,14 @@ namespace Athena.Configuration
         public AppFunctionBuilder WrapAllWith(Func<AppFunc, string, AppFunc> builder)
         {
             _wrappers.Add(builder);
+
+            return this;
+        }
+
+        public AppFunctionBuilder Reset()
+        {
+            _appFunctionFactories.Clear();
+            _chain.Clear();
 
             return this;
         }

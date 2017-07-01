@@ -19,8 +19,8 @@ namespace Athena.Web.Sample
         {
             var athenaContext = await AthenaApplications
                 .From("local", typeof(Program).GetTypeInfo().Assembly)
-                .UsingPlugin(new WebAppPlugin())
-                .EnableDiagnostics(new InMemoryDiagnosticsDataManager())
+                .UsingDefaultWeb()
+                .EnableDiagnostics()
                 .WithUiAt("_diagnostics")
                 .Build();
             

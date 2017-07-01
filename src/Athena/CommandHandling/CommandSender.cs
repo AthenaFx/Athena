@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Athena.Configuration;
@@ -19,6 +20,24 @@ namespace Athena.CommandHandling
             var context = environment.GetAthenaContext();
 
             return context.SendCommand(command);
+        }
+
+        public static PartConfiguration<CommandSenderConfiguration> EnableCommandSender(
+            this AthenaBootstrapper bootstrapper)
+        {
+            return bootstrapper.ConfigureWith<CommandSenderConfiguration>((conf, context) =>
+            {
+                context.DefineApplication("commandhandler", conf.GetBuilder());
+                
+                return Task.CompletedTask;
+            });
+        }
+
+        public static PartConfiguration<CommandSenderConfiguration> ConfigureApplication(
+            this PartConfiguration<CommandSenderConfiguration> config, 
+            Func<AppFunctionBuilder, AppFunctionBuilder> configure)
+        {
+            return config.UpdateSettings(x => x.ConfigureApplication(configure));
         }
     }
 }

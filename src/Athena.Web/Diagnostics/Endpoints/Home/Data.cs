@@ -8,16 +8,16 @@ namespace Athena.Web.Diagnostics.Endpoints.Home
 {
     public class Data
     {
-        public async Task<DataGetResult> Get(DataGetInput input)
+        public async Task<DataGetResult> Get(DataGetInput input, AthenaContext context)
         {
-            var data = await ApplicationDiagnostics
+            var data = await context.GetSetting<DiagnosticsConfiguration>()
                 .DataManager
                 .GetDataFor(input.Slug, input.Id, input.Step)
                 .ConfigureAwait(false);
             
             return new DataGetResult(input.Slug, input.Id, input.Step, 
                 data.ToDictionary(x => x.Key, x => x.Value.Select(y => 
-                    new KeyValuePair<string, string>(y.Key, y.Value.GetStringRepresentation()))));
+                    new KeyValuePair<string, string>(y.Key, y.Value))));
         }
     }
 

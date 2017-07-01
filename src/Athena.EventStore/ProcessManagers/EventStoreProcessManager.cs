@@ -8,18 +8,12 @@ using Athena.EventStore.Serialization;
 
 namespace Athena.EventStore.ProcessManagers
 {
-    public abstract class EventStoreProcessManager<TState, TIdentity> : ProcessManager
+    public abstract class EventStoreProcessManager<TState, TIdentity> : ProcessManager where TState : new()
     {
-        private readonly ProcessStateLoader<TState, TIdentity> _stateLoader;
-
-        protected EventStoreProcessManager(ProcessStateLoader<TState, TIdentity> stateLoader)
-        {
-            _stateLoader = stateLoader;
-        }
-
         public virtual string Name => GetType().FullName.Replace(".", "-").ToLower();
         
-        public virtual async Task Handle(DeSerializationResult evnt, IDictionary<string, object> environment)
+        public virtual async Task Handle(DeSerializationResult evnt, IDictionary<string, object> environment,
+            ProcessStateLoader stateLoader)
         {
             var eventMappings = new Dictionary<Type, Tuple<Func<object, EventProcessingContext<TState>, Task>, 
                 Func<object, TIdentity>, string>>();
@@ -37,7 +31,7 @@ namespace Athena.EventStore.ProcessManagers
 
                 var id = handlerMapping.Item2(evnt);
 
-                var state = await _stateLoader.Load(id).ConfigureAwait(false);
+                var state = await stateLoader.Load<TState, TIdentity>(id).ConfigureAwait(false);
                 
                 if(state == null)
                     continue;

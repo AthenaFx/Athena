@@ -1,35 +1,48 @@
 ﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Athena.Configuration
 {
-    public class PartConfiguration<TPart> : AthenaBootstrapper
+    public abstract class PartConfiguration : AthenaBootstrapper
     {
         private readonly AthenaBootstrapper _bootstrapper;
-        private readonly TPart _part;
 
-        public PartConfiguration(AthenaBootstrapper bootstrapper, TPart part)
+        protected PartConfiguration(AthenaBootstrapper bootstrapper)
         {
             _bootstrapper = bootstrapper;
-            _part = part;
         }
 
         public string ApplicationName => _bootstrapper.ApplicationName;
         public string Environment => _bootstrapper.Environment;
-
-        public AthenaBootstrapper WithApplicationName(string name)
+        
+        public TSetting GetSetting<TSetting>(string key = null) where TSetting : class
         {
-            return _bootstrapper.WithApplicationName(name);
+            return _bootstrapper.GetSetting<TSetting>(key);
         }
 
-        public PartConfiguration<TPlugin> UsingPlugin<TPlugin>(TPlugin plugin) where TPlugin : class, AthenaPlugin
+        public IReadOnlyCollection<Assembly> ApplicationAssemblies => _bootstrapper.ApplicationAssemblies;
+
+        public PartConfiguration<TPart> Configure<TPart>(string key = null) where TPart : class, new()
         {
-            return _bootstrapper.UsingPlugin(plugin);
+            return _bootstrapper.Configure<TPart>(key);
         }
 
-        public BootstrapEventListenerSetup<TEvent> When<TEvent>() where TEvent : SetupEvent
+        public PartConfiguration<TNewPart> ConfigureWith<TNewPart, TEvent>(
+            Func<TNewPart, TEvent, AthenaSetupContext, Task> setup, 
+            Func<TEvent, bool> filter = null, string key = null) where TNewPart : class, new() where TEvent : SetupEvent
         {
-            return _bootstrapper.When<TEvent>();
+            return _bootstrapper.ConfigureWith(setup, filter, key);
+        }
+
+        public AthenaBootstrapper ShutDownWith<TEvent>(Func<TEvent, AthenaContext, Task> shutDown,
+            Func<TEvent, bool> filter = null) 
+            where TEvent : ShutdownEvent
+        {
+            return _bootstrapper.ShutDownWith(shutDown, filter);
         }
 
         public Task<AthenaContext> Build()
@@ -37,11 +50,56 @@ namespace Athena.Configuration
             return _bootstrapper.Build();
         }
 
-        public PartConfiguration<TPart> ConfigurePart(Action<TPart> configure)
+        internal abstract Task TrySetUp(SetupEvent evnt, AthenaSetupContext context);
+        
+        internal abstract object GetPart();
+    }
+    
+    public class PartConfiguration<TPart> : PartConfiguration
+    {
+        private TPart _part;
+        
+        private readonly
+            ConcurrentBag<Tuple<Func<SetupEvent, bool>, Func<object, SetupEvent, AthenaSetupContext, Task>>> _setups =
+                new ConcurrentBag<Tuple<Func<SetupEvent, bool>, Func<object, SetupEvent, AthenaSetupContext, Task>>>()
+            ;
+
+        internal PartConfiguration(AthenaBootstrapper bootstrapper, TPart part) 
+            : base(bootstrapper)
         {
-            configure(_part);
+            _part = part;
+        }
+
+        public PartConfiguration<TPart> UpdateSettings(Func<TPart, TPart> configure)
+        {
+            _part = configure(_part);
 
             return this;
+        }
+        
+        internal override Task TrySetUp(SetupEvent evnt, AthenaSetupContext context)
+        {
+            return Task.WhenAll(_setups
+                .Where(x => x.Item1(evnt))
+                .Select(x => x.Item2(GetPart(), evnt, context)));
+        }
+        
+        internal void WithSetup<TEvent>(Func<TPart, TEvent, AthenaSetupContext, Task> setup,
+            Func<TEvent, bool> filter = null) where TEvent : SetupEvent
+        {
+            filter = filter ?? (x => true);
+
+            var fullFilter 
+                = (Func<SetupEvent, bool>) (evnt => evnt.GetType() == typeof(TEvent) && filter((TEvent)evnt));
+
+            _setups.Add(
+                new Tuple<Func<SetupEvent, bool>, Func<object, SetupEvent, AthenaSetupContext, Task>>(fullFilter,
+                    (part, evnt, context) => setup((TPart)part, (TEvent)evnt, context)));
+        }
+
+        internal override object GetPart()
+        {
+            return _part;
         }
     }
 }

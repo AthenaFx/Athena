@@ -10,8 +10,8 @@ namespace Athena.Configuration
         string ApplicationName { get; }
         string Environment { get; }
         IReadOnlyCollection<Assembly> ApplicationAssemblies { get; }
-        void DefineApplication(string name, Func<AppFunctionBuilder, AppFunctionBuilder> builder);
-        void ConfigureApplication(string name, Func<AppFunctionBuilder, AppFunctionBuilder> builder);
+        Task DefineApplication(string name, Func<AppFunctionBuilder, AppFunctionBuilder> builder);
+        Task UpdateApplication(string name, Func<AppFunctionBuilder, AppFunctionBuilder> builder);
         IReadOnlyCollection<string> GetDefinedApplications();
         Task Done(SetupEvent evnt);
     }

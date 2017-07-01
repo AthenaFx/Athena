@@ -65,7 +65,7 @@ namespace Athena.Diagnostics
                 : typeData.Keys.Take(numberOfSteps));
         }
 
-        public Task<IReadOnlyDictionary<string, IEnumerable<KeyValuePair<string, DiagnosticsValue>>>> GetDataFor(
+        public Task<IReadOnlyDictionary<string, IEnumerable<KeyValuePair<string, string>>>> GetDataFor(
             string application, string type, string step)
         {
             var loweredApplication = (application ?? "").ToLower();
@@ -75,25 +75,25 @@ namespace Athena.Diagnostics
             ConcurrentDictionary<string, LurchTable<string, ConcurrentBag<DiagnosticsData>>> categoryData;
 
             if (!Data.TryGetValue(loweredApplication, out categoryData))
-                return Task.FromResult<IReadOnlyDictionary<string, IEnumerable<KeyValuePair<string, DiagnosticsValue>>>>
-                    (new Dictionary<string, IEnumerable<KeyValuePair<string, DiagnosticsValue>>>());
+                return Task.FromResult<IReadOnlyDictionary<string, IEnumerable<KeyValuePair<string, string>>>>
+                    (new Dictionary<string, IEnumerable<KeyValuePair<string, string>>>());
 
             LurchTable<string, ConcurrentBag<DiagnosticsData>> typeData;
 
             if (!categoryData.TryGetValue(loweredType, out typeData))
-                return Task.FromResult<IReadOnlyDictionary<string, IEnumerable<KeyValuePair<string, DiagnosticsValue>>>>
-                    (new Dictionary<string, IEnumerable<KeyValuePair<string, DiagnosticsValue>>>());
+                return Task.FromResult<IReadOnlyDictionary<string, IEnumerable<KeyValuePair<string, string>>>>
+                    (new Dictionary<string, IEnumerable<KeyValuePair<string, string>>>());
 
             if (!typeData.ContainsKey(loweredStep))
-                return Task.FromResult<IReadOnlyDictionary<string, IEnumerable<KeyValuePair<string, DiagnosticsValue>>>>
-                    (new Dictionary<string, IEnumerable<KeyValuePair<string, DiagnosticsValue>>>());
+                return Task.FromResult<IReadOnlyDictionary<string, IEnumerable<KeyValuePair<string, string>>>>
+                    (new Dictionary<string, IEnumerable<KeyValuePair<string, string>>>());
 
             var result = typeData[loweredStep]
                 .GroupBy(x => x.Key, x => x.Data)
                 .ToDictionary(x => x.Key, x => x.SelectMany(y => y));
 
             return Task
-                .FromResult<IReadOnlyDictionary<string, IEnumerable<KeyValuePair<string, DiagnosticsValue>>>>(result);
+                .FromResult<IReadOnlyDictionary<string, IEnumerable<KeyValuePair<string, string>>>>(result);
         }
     }
 }

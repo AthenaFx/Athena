@@ -4,5 +4,6 @@ namespace Athena.Diagnostics
     {
         public const string MiddlewareExecution = "MiddlewareExecution";
         public const string Bootstrapping = "Bootstrapping";
+        public const string Shutdown = "Shutdown";
     }
 }

@@ -30,10 +30,10 @@ namespace Athena.Diagnostics
 
             await _diagnosticsDataManager.AddDiagnostics(environment.GetCurrentApplication(),
                 DiagnosticsTypes.MiddlewareExecution, environment.GetRequestId(), 
-                new DiagnosticsData($"MiddleWare-{_nextItem}-Executed", new Dictionary<string, DiagnosticsValue>
+                new DiagnosticsData($"MiddleWare-{_nextItem}-Executed", new Dictionary<string, string>
                 {
-                    ["Middleware"] = new ObjectDiagnosticsValue(_nextItem),
-                    ["ExecutionTime"] = new ObjectDiagnosticsValue(timer.Elapsed)
+                    ["Middleware"] = _nextItem,
+                    ["ExecutionTime"] = timer.Elapsed.ToString()
                 }));
         }
     }

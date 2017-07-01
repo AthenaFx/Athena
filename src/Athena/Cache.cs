@@ -41,12 +41,12 @@ namespace Athena
 
         public Action<TValue> OnAddition
         {
-            set { _onAddition = value; }
+            set => _onAddition = value;
         }
 
         public Func<TKey, TValue> OnMissing
         {
-            set { _currentOnMissing = value; }
+            set => _currentOnMissing = value;
         }
 
         public Func<TValue, TKey> GetKey { get; set; } = delegate { throw new NotImplementedException(); };

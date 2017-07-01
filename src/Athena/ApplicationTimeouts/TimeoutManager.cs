@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Athena.Configuration;
 using Athena.Logging;
 using Athena.Processes;
 using Athena.PubSub;
@@ -31,7 +30,7 @@ namespace Athena.ApplicationTimeouts
             
             _tokenSource = new CancellationTokenSource();
 
-            StartCheckingTimeouts(timeoutStore);
+            StartCheckingTimeouts(timeoutStore, context);
             
             return Task.CompletedTask;
         }
@@ -43,22 +42,22 @@ namespace Athena.ApplicationTimeouts
             return Task.CompletedTask;
         }
 
-        private void StartCheckingTimeouts(TimeoutStore timeoutStore)
+        private void StartCheckingTimeouts(TimeoutStore timeoutStore, AthenaContext context)
         {
             var cancellationToken = _tokenSource.Token;
             
-            Task.Run(async () => await Poll(timeoutStore, cancellationToken).ConfigureAwait(false), cancellationToken)
+            Task.Run(async () => await Poll(timeoutStore, cancellationToken, context).ConfigureAwait(false), cancellationToken)
                 .ContinueWith(t =>
                 {
                     (t.Exception ?? new AggregateException()).Handle(ex => true);
                     
                     Logger.Write(LogLevel.Warn, "Timeout poll failed", t.Exception);
 
-                    StartCheckingTimeouts(timeoutStore);
+                    StartCheckingTimeouts(timeoutStore, context);
                 }, TaskContinuationOptions.OnlyOnFaulted);
         }
 
-        private async Task Poll(TimeoutStore timeoutStore, CancellationToken token)
+        private async Task Poll(TimeoutStore timeoutStore, CancellationToken token, AthenaContext context)
         {
             var startSlice = DateTime.UtcNow.AddYears(-10);
             var nextRetrieval = DateTime.UtcNow;
@@ -76,7 +75,7 @@ namespace Athena.ApplicationTimeouts
                     if (startSlice < x.Item2)
                         startSlice = x.Item2;
 
-                    await EventPublishing.Publish(x.Item1.Message).ConfigureAwait(false);
+                    await context.Publish(x.Item1.Message).ConfigureAwait(false);
                 }).ConfigureAwait(false);
 
                 nextRetrieval = nextExpiredTimeout;

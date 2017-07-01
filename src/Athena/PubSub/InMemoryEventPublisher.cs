@@ -2,7 +2,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Athena.PubSub
@@ -12,24 +11,25 @@ namespace Athena.PubSub
         private static readonly IDictionary<string, EventSubscription> Subscriptions 
             = new ConcurrentDictionary<string, EventSubscription>();
         
-        public async Task Publish(object evnt)
+        public async Task Publish(object evnt, SettingsContext context)
         {
             foreach (var type in evnt.GetType().GetParentTypesFor())
             {
                 var subscriptions = Subscriptions.Where(x => x.Value.SubscribedTo == type).ToList();
 
-                await Task.WhenAll(subscriptions.Select(x => x.Value.Handle(evnt))).ConfigureAwait(false);
+                await Task.WhenAll(subscriptions.Select(x => x.Value.Handle(evnt, context))).ConfigureAwait(false);
             }
         }
 
-        public EventSubscription Subscribe<TEvent>(Func<TEvent, Task> subscription, string id = null)
+        public EventSubscription Subscribe<TEvent>(Func<TEvent, SettingsContext, Task> subscription, string id = null)
         {
             var type = typeof(TEvent);
             
             if(string.IsNullOrEmpty(id))
                 id = Guid.NewGuid().ToString();
             
-            var newSubscription = new EventSubscription(x => subscription((TEvent) x), UnSubscribe, id, type);
+            var newSubscription = new EventSubscription((evnt, context) => subscription((TEvent) evnt, context), 
+                UnSubscribe, id, type);
 
             Subscriptions[id] = newSubscription;
 

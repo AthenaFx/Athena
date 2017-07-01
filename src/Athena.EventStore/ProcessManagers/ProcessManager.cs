@@ -8,7 +8,9 @@ namespace Athena.EventStore.ProcessManagers
     public interface ProcessManager
     {
         string Name { get; }
-        Task Handle(DeSerializationResult evnt, IDictionary<string, object> environment);
+
+        Task Handle(DeSerializationResult evnt, IDictionary<string, object> environment,
+            ProcessStateLoader stateLoader);
         IEnumerable<string> GetInterestingStreams();
         IReadOnlyDictionary<Type, string> GetEventMappings();
     }

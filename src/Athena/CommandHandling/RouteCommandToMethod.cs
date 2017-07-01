@@ -14,11 +14,15 @@ namespace Athena.CommandHandling
         {
         }
 
-        protected override MethodInfo Route(IDictionary<string, object> environment, IReadOnlyCollection<MethodInfo> availableMethods)
+        protected override MethodInfo Route(IDictionary<string, object> environment, 
+            IReadOnlyCollection<MethodInfo> availableMethods)
         {
             var command = environment.Get<object>("command");
 
-            return command == null ? null : availableMethods.FirstOrDefault(x => x.GetParameters().Any(y => y.ParameterType == command.GetType()));
+            return command == null
+                ? null
+                : availableMethods.FirstOrDefault(x =>
+                    x.GetParameters().Any(y => y.ParameterType == command.GetType()));
         }
 
         public static RouteCommandToMethod New(Func<MethodInfo, bool> filter, 

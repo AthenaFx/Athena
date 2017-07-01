@@ -2,8 +2,8 @@ using System.Threading.Tasks;
 
 namespace Athena.EventStore.ProcessManagers
 {
-    public interface ProcessStateLoader<TSTate, in TIdentity>
+    public interface ProcessStateLoader
     {
-        Task<TSTate> Load(TIdentity id);
+        Task<TSTate> Load<TSTate, TIdentity>(TIdentity id) where TSTate : new();
     }
 }

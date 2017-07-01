@@ -10,18 +10,11 @@ namespace Athena.EventStore.StreamSubscriptions
 {
     public class RunStreamSubscribers : LongRunningProcess
     {
-        private readonly SubscribersSettings _settings;
-
         private readonly IDictionary<string, IServiceSubscription> _serviceSubscriptions =
             new Dictionary<string, IServiceSubscription>();
 
         private bool _running;
         private IEventStoreConnection _connection;
-
-        public RunStreamSubscribers(SubscribersSettings settings)
-        {
-            _settings = settings;
-        }
 
         public async Task Start(AthenaContext context)
         {
@@ -29,20 +22,27 @@ namespace Athena.EventStore.StreamSubscriptions
                 return;
 
             _running = true;
+
+            var settings = context.GetSetting<SubscribersSettings>();
             
-            _connection = _settings.GetConnectionString().CreateConnection(x => x
+            _connection = settings.GetConnectionString().CreateConnection(x => x
                 .KeepReconnecting()
                 .KeepRetrying()
                 .UseCustomLogger(new EventStoreLog()));
 
-            var streams = _settings.GetSubscribedStreams();
+            var streams = settings.GetSubscribedStreams();
 
             foreach (var stream in streams)
             {
                 if (stream.Item3)
-                    await SetupLiveSubscription(stream.Item1, stream.Item2, context).ConfigureAwait(false);
+                {
+                    await SetupLiveSubscription(stream.Item1, stream.Item2, context, settings).ConfigureAwait(false);
+                }
                 else
-                    await SetupPersistentSubscription(stream.Item1, stream.Item2, context).ConfigureAwait(false);
+                {
+                    await SetupPersistentSubscription(stream.Item1, stream.Item2, context, settings)
+                        .ConfigureAwait(false);
+                }
             }
         }
 
@@ -62,7 +62,8 @@ namespace Athena.EventStore.StreamSubscriptions
             return Task.CompletedTask;
         }
 
-        private async Task SetupLiveSubscription(string stream, int workers, AthenaContext context)
+        private async Task SetupLiveSubscription(string stream, int workers, AthenaContext context, 
+            SubscribersSettings settings)
         {
             //TODO:Handle multiple workers
             while (true)
@@ -81,7 +82,7 @@ namespace Athena.EventStore.StreamSubscriptions
                     //TODO:Handle failing messages
                     var eventstoreSubscription = await _connection.SubscribeToStreamAsync(stream, true,
                             async (subscription, evnt)
-                                => await HandleEvent(_settings.GetSerializer().DeSerialize(evnt), "livesubscription",
+                                => await HandleEvent(settings.GetSerializer().DeSerialize(evnt), "livesubscription",
                                         x => Logger.Write(LogLevel.Debug,
                                             $"Successfully handled event: {x.OriginalEvent.Event.EventId} on stream: {stream}"),
                                         (x, exception)
@@ -90,7 +91,7 @@ namespace Athena.EventStore.StreamSubscriptions
                                                 exception), context)
                                     .ConfigureAwait(false),
                             async (subscription, reason, exception)
-                                => await LiveSubscriptionDropped(stream, workers, reason, exception, context)
+                                => await LiveSubscriptionDropped(stream, workers, reason, exception, context, settings)
                                     .ConfigureAwait(false))
                         .ConfigureAwait(false);
 
@@ -108,7 +109,8 @@ namespace Athena.EventStore.StreamSubscriptions
             }
         }
 
-        private async Task SetupPersistentSubscription(string stream, int workers, AthenaContext context)
+        private async Task SetupPersistentSubscription(string stream, int workers, AthenaContext context, 
+            SubscribersSettings settings)
         {
             //TODO:Handle multiple workers
             var groupName = $"{context.ApplicationName}-{stream}";
@@ -124,7 +126,7 @@ namespace Athena.EventStore.StreamSubscriptions
                 try
                 {
                     var eventstoreSubscription = _connection.ConnectToPersistentSubscription(stream, groupName,
-                        async (subscription, evnt) => await HandleEvent(_settings.GetSerializer().DeSerialize(evnt), 
+                        async (subscription, evnt) => await HandleEvent(settings.GetSerializer().DeSerialize(evnt), 
                             "persistentsubscription",
                             x =>
                             {
@@ -141,7 +143,8 @@ namespace Athena.EventStore.StreamSubscriptions
                                 subscription.Fail(x.OriginalEvent, PersistentSubscriptionNakEventAction.Unknown,
                                     exception.Message);
                             }, context).ConfigureAwait(false), async (subscription, reason, exception) 
-                            => await PersistentSubscriptionDropped(stream, workers, reason, exception, context)
+                            => await PersistentSubscriptionDropped(stream, workers, reason, exception, context, 
+                                    settings)
                                 .ConfigureAwait(false), autoAck:false);
 
                     _serviceSubscriptions[groupName] = new PersistentServiceSubscription(eventstoreSubscription);
@@ -159,7 +162,7 @@ namespace Athena.EventStore.StreamSubscriptions
         }
         
         private async Task LiveSubscriptionDropped(string stream, int workers, SubscriptionDropReason reason,
-            Exception exception, AthenaContext context)
+            Exception exception, AthenaContext context, SubscribersSettings settings)
         {
             if (!_running)
                 return;
@@ -168,11 +171,11 @@ namespace Athena.EventStore.StreamSubscriptions
                 exception);
 
             if (reason != SubscriptionDropReason.UserInitiated)
-                await SetupLiveSubscription(stream, workers, context).ConfigureAwait(false);
+                await SetupLiveSubscription(stream, workers, context, settings).ConfigureAwait(false);
         }
         
         private async Task PersistentSubscriptionDropped(string stream, int workers, SubscriptionDropReason reason,
-            Exception exception, AthenaContext context)
+            Exception exception, AthenaContext context, SubscribersSettings settings)
         {
             if (!_running)
                 return;
@@ -181,7 +184,7 @@ namespace Athena.EventStore.StreamSubscriptions
                 exception);
 
             if (reason != SubscriptionDropReason.UserInitiated)
-                await SetupPersistentSubscription(stream, workers, context).ConfigureAwait(false);
+                await SetupPersistentSubscription(stream, workers, context, settings).ConfigureAwait(false);
         }
 
         private async Task HandleEvent(DeSerializationResult evnt, string applicationType,

@@ -13,18 +13,10 @@ namespace Athena.EventStore.Projections
 {
     public class RunProjections : LongRunningProcess
     {
-        private readonly ProjectionSettings _settings;
-        private readonly ProjectionsPositionHandler _projectionsPositionHandler;
         private bool _running;
         private IEventStoreConnection _connection;
         private readonly IDictionary<string, ProjectionSubscription> _projectionSubscriptions 
             = new Dictionary<string, ProjectionSubscription>();
-
-        public RunProjections(ProjectionSettings settings, ProjectionsPositionHandler projectionsPositionHandler)
-        {
-            _settings = settings;
-            _projectionsPositionHandler = projectionsPositionHandler;
-        }
 
         public async Task Start(AthenaContext context)
         {
@@ -33,13 +25,15 @@ namespace Athena.EventStore.Projections
             
             _running = true;
 
-            _connection = _settings.GetConnectionString().CreateConnection(x => x
+            var settings = context.GetSetting<ProjectionSettings>();
+
+            _connection = settings.GetConnectionString().CreateConnection(x => x
                 .KeepReconnecting()
                 .KeepRetrying()
                 .UseCustomLogger(new EventStoreLog()));
 
-            foreach (var projection in _settings.GetProjections())
-                await StartProjection(projection, context).ConfigureAwait(false);
+            foreach (var projection in settings.GetProjections())
+                await StartProjection(projection, context, settings).ConfigureAwait(false);
         }
 
         public Task Stop()
@@ -58,9 +52,10 @@ namespace Athena.EventStore.Projections
             return Task.CompletedTask;
         }
 
-        private async Task StartProjection(EventStoreProjection projection, AthenaContext context)
+        private async Task StartProjection(EventStoreProjection projection, AthenaContext context, 
+            ProjectionSettings settings)
         {
-            await ProjectionInstaller.InstallProjectionFor(projection, _settings.GetConnectionString())
+            await ProjectionInstaller.InstallProjectionFor(projection, settings.GetConnectionString())
                 .ConfigureAwait(false);
             
             while (true)
@@ -76,6 +71,8 @@ namespace Athena.EventStore.Projections
 
                 try
                 {
+                    var positionHandler = settings.GetPositionHandler();
+                    
                     var messageProcessor = new MessageProcessor();
                     
                     var messageSubscription = Observable
@@ -91,16 +88,16 @@ namespace Athena.EventStore.Projections
                         .FromEvent<long>(
                             x => messageProcessor.MessageHandled += x, x => messageProcessor.MessageHandled -= x)
                         .Buffer(TimeSpan.FromMinutes(1))
-                        .Select(async x => await _projectionsPositionHandler.SetLastEvent(projection.Name, x.Max())
+                        .Select(async x => await positionHandler.SetLastEvent(projection.Name, x.Max())
                             .ConfigureAwait(false))
                         .Subscribe();
                 
                     var eventStoreSubscription = _connection.SubscribeToStreamFrom(projection.Name, 
-                        await _projectionsPositionHandler.GetLastEvent(projection.Name).ConfigureAwait(false), 
+                        await positionHandler.GetLastEvent(projection.Name).ConfigureAwait(false), 
                         CatchUpSubscriptionSettings.Default,
-                        (subscription, evnt) => messageProcessor.OnMessageArrived(_settings.GetSerializer().DeSerialize(evnt)),
+                        (subscription, evnt) => messageProcessor.OnMessageArrived(settings.GetSerializer().DeSerialize(evnt)),
                         subscriptionDropped: async (subscription, reason, exception) => 
-                            await SubscriptionDropped(projection, reason, exception, context).ConfigureAwait(false));
+                            await SubscriptionDropped(projection, reason, exception, context, settings).ConfigureAwait(false));
 
                     _projectionSubscriptions[projection.Name] 
                         = new ProjectionSubscription(messageSubscription, messageHandlerSubscription, eventStoreSubscription);
@@ -121,7 +118,7 @@ namespace Athena.EventStore.Projections
         }
         
         private async Task SubscriptionDropped(EventStoreProjection projection, SubscriptionDropReason reason, 
-            Exception exception, AthenaContext context)
+            Exception exception, AthenaContext context, ProjectionSettings settings)
         {
             if (!_running)
                 return;
@@ -131,7 +128,7 @@ namespace Athena.EventStore.Projections
                 Logger.Write(LogLevel.Error, $"Projection {projection.GetType().FullName} failed. Restarting...",
                     exception);
                 
-                await StartProjection(projection, context).ConfigureAwait(false);
+                await StartProjection(projection, context, settings).ConfigureAwait(false);
             }
         }
         
@@ -177,7 +174,7 @@ namespace Athena.EventStore.Projections
                 
                 StopProjection(projection);
                 
-                await EventPublishing.Publish(new ProjectionFailed(projection.GetType(), ex))
+                await context.Publish(new ProjectionFailed(projection.GetType(), ex))
                     .ConfigureAwait(false);
             }
         }

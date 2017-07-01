@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Athena.Configuration;
 using Athena.Consensus;
 using Athena.Logging;
 using Athena.Processes;
@@ -33,7 +32,7 @@ namespace Athena.Consul.Consensus
             
             _lock = client.CreateLock($"service/{_serviceName}/leader");
 
-            StartLeaderElection();
+            StartLeaderElection(context);
             
             return Task.CompletedTask;
         }
@@ -48,22 +47,22 @@ namespace Athena.Consul.Consensus
             return Task.CompletedTask;
         }
         
-        private void StartLeaderElection()
+        private void StartLeaderElection(AthenaContext context)
         {
             var cancellationToken = _cancellationTokenSource.Token;
             
-            Task.Run(async () => await AcquireLock(_lock, cancellationToken).ConfigureAwait(false), cancellationToken)
+            Task.Run(async () => await AcquireLock(context, _lock, cancellationToken).ConfigureAwait(false), cancellationToken)
                 .ContinueWith(t =>
                 {
                     (t.Exception ?? new AggregateException()).Handle(ex => true);
                     
                     Logger.Write(LogLevel.Warn, "Consul leader election failed", t.Exception);
 
-                    StartLeaderElection();
+                    StartLeaderElection(context);
                 }, TaskContinuationOptions.OnlyOnFaulted);
         }
         
-        private async Task AcquireLock(IDistributedLock consulLock, CancellationToken cancellationToken)
+        private async Task AcquireLock(AthenaContext context, IDistributedLock consulLock, CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -71,7 +70,7 @@ namespace Athena.Consul.Consensus
                 {
                     if (_currentRole != NodeRole.Follower)
                     {
-                        await EventPublishing.Publish(new NodeRoleTransitioned(NodeRole.Follower)).ConfigureAwait(false);
+                        await context.Publish(new NodeRoleTransitioned(NodeRole.Follower)).ConfigureAwait(false);
                         _currentRole = NodeRole.Follower;
                     }
 
@@ -82,7 +81,7 @@ namespace Athena.Consul.Consensus
                 {
                     if (_currentRole != NodeRole.Leader)
                     {
-                        await EventPublishing.Publish(new NodeRoleTransitioned(NodeRole.Leader)).ConfigureAwait(false);
+                        await context.Publish(new NodeRoleTransitioned(NodeRole.Leader)).ConfigureAwait(false);
                         _currentRole = NodeRole.Leader;
                     }
 

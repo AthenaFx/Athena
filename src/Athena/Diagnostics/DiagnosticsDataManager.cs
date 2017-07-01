@@ -13,7 +13,7 @@ namespace Athena.Diagnostics
         
         Task<IEnumerable<string>> GetStepsFor(string application, string type, int numberOfSteps = 50);
         
-        Task<IReadOnlyDictionary<string, IEnumerable<KeyValuePair<string, DiagnosticsValue>>>> 
+        Task<IReadOnlyDictionary<string, IEnumerable<KeyValuePair<string, string>>>> 
             GetDataFor(string application, string type, string step);
     }
 }

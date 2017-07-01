@@ -1,48 +1,36 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using Athena.Configuration;
 using Athena.Processes;
-using Athena.PubSub;
 using Consul;
 
 namespace Athena.Consul.Discovery
 {
     public static class TtlCheck
     {
-        public static AthenaBootstrapper UseConsulTtlCheck(this AthenaBootstrapper bootstrapper, TimeSpan interval,
-            string address = null, int port = 0, string id = null, IEnumerable<string> tags = null, 
-            Func<ConsulClient> getClient = null)
+        public static PartConfiguration<ConsulTtlCheckSettings> UseConsulTtlCheck(this AthenaBootstrapper bootstrapper)
         {
-            id = id ?? $"{Environment.MachineName.ToLower()}-{bootstrapper.ApplicationName.ToLower()}";
-            var checkId = $"service:{id}:ttl";
-            getClient = getClient ?? (() => new ConsulClient());
-
             return bootstrapper
-                .UseProcess(new SendTtlDataToConsul(interval - new TimeSpan(interval.Ticks / 2), checkId, getClient()))
-                .When<BootstrapCompleted>()
-                .Do(async (evnt, context) =>
+                .UseProcess(new SendTtlDataToConsul())
+                .ConfigureWith<ConsulTtlCheckSettings, BootstrapCompleted>(async (config, evnt, context) =>
                 {
-                    var client = getClient();
-                
-                    await client.Agent.ServiceRegister(new AgentServiceRegistration
+                    await config.CLient.Agent.ServiceRegister(new AgentServiceRegistration
                     {
-                        Name = bootstrapper.ApplicationName,
-                        ID = id,
-                        Address = address ?? "",
-                        Port = port,
-                        Tags = tags.ToArray()
+                        Name = config.ApplicationName,
+                        ID = config.Id,
+                        Address = config.Address,
+                        Port = config.Port,
+                        Tags = config.Tags.ToArray()
                     }).ConfigureAwait(false);
                 
-                    await client.Agent.CheckRegister(new AgentCheckRegistration
+                    await config.CLient.Agent.CheckRegister(new AgentCheckRegistration
                     {
-                        ServiceID = id,
-                        Name = $"Service '{bootstrapper.ApplicationName}' ttl check",
-                        ID = checkId,
-                        Status = HealthStatus.Passing,
-                        TTL = interval
+                        ServiceID = config.Id,
+                        Name = config.CheckName,
+                        ID = config.CheckId,
+                        Status = config.InitialStatus,
+                        TTL = config.Ttl
                     });
-                });
+                }).UpdateSettings(x => x.WithApplicationName(bootstrapper.ApplicationName));
         }
     }
 }

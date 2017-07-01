@@ -20,7 +20,12 @@ namespace Athena.EventStore.ProcessManagers
             var context = environment.Get<ProcessManagerExecutionContext>("context");
 
             if (context != null)
-                await context.ProcessManager.Handle(context.Event, environment).ConfigureAwait(false);
+            {
+                await context
+                    .ProcessManager
+                    .Handle(context.Event, environment, context.StateLoader)
+                    .ConfigureAwait(false);
+            }
 
             await _next(environment).ConfigureAwait(false);
         }

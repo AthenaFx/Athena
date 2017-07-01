@@ -1,10 +1,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Athena.Configuration;
 using Athena.Logging;
 using Athena.Processes;
-using Consul;
 using LogLevel = Athena.Logging.LogLevel;
 
 namespace Athena.Consul.Discovery
@@ -12,22 +10,12 @@ namespace Athena.Consul.Discovery
     public class SendTtlDataToConsul : LongRunningProcess
     {
         private CancellationTokenSource _cancellationTokenSource;
-        private readonly ConsulClient _client;
-        private readonly TimeSpan _interval;
-        private readonly string _checkId;
-        
-        public SendTtlDataToConsul(TimeSpan interval, string checkId, ConsulClient client)
-        {
-            _interval = interval;
-            _checkId = checkId;
-            _client = client;
-        }
-        
+
         public Task Start(AthenaContext context)
         {
             _cancellationTokenSource = new CancellationTokenSource();
             
-            StartSendingTtl();
+            StartSendingTtl(context.GetSetting<ConsulTtlCheckSettings>());
             
             return Task.CompletedTask;
         }
@@ -39,28 +27,31 @@ namespace Athena.Consul.Discovery
             return Task.CompletedTask;
         }
 
-        private void StartSendingTtl()
+        private void StartSendingTtl(ConsulTtlCheckSettings settings)
         {
             var cancellationToken = _cancellationTokenSource.Token;
             
-            Task.Run(async () => await SendTtl(cancellationToken).ConfigureAwait(false), cancellationToken)
+            Task.Run(async () => await SendTtl(settings, cancellationToken).ConfigureAwait(false), cancellationToken)
                 .ContinueWith(t =>
                 {
                     (t.Exception ?? new AggregateException()).Handle(ex => true);
                     
                     Logger.Write(LogLevel.Warn, "Consul ttl send failed", t.Exception);
 
-                    StartSendingTtl();
+                    StartSendingTtl(settings);
                 }, TaskContinuationOptions.OnlyOnFaulted);
         }
 
-        private async Task SendTtl(CancellationToken cancellationToken)
+        private static async Task SendTtl(ConsulTtlCheckSettings settings, CancellationToken cancellationToken)
         {
+            var interval = settings.Ttl - new TimeSpan(settings.Ttl.Ticks / 2);
+            
             while (!cancellationToken.IsCancellationRequested)
             {
-                await _client.Agent.PassTTL(_checkId, "Success", cancellationToken).ConfigureAwait(false);
+                await settings.CLient.Agent.PassTTL(settings.CheckId, "Success", cancellationToken)
+                    .ConfigureAwait(false);
 
-                await Task.Delay(_interval, cancellationToken).ConfigureAwait(false);
+                await Task.Delay(interval, cancellationToken).ConfigureAwait(false);
             }
         }
     }

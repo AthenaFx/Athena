@@ -7,9 +7,10 @@ namespace Athena.Web.Diagnostics.Endpoints.Home
 {
     public class Type
     {
-        public async Task<TypeGetResult> Get(TypeGetInput input)
+        public async Task<TypeGetResult> Get(TypeGetInput input, AthenaContext context)
         {
-            var steps = await ApplicationDiagnostics
+            var steps = await context
+                .GetSetting<DiagnosticsConfiguration>()
                 .DataManager
                 .GetStepsFor(input.Slug, input.Id)
                 .ConfigureAwait(false);

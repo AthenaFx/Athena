@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using Athena.Configuration;
 using Athena.PubSub;
@@ -9,38 +7,29 @@ namespace Athena.Consul.Discovery
 {
     public static class HttCheck
     {
-        public static AthenaBootstrapper UseConsulHttpCheck(this AthenaBootstrapper bootstrapper, TimeSpan interval, 
-            Uri url, string address = null, int port = 0, string id = null, IEnumerable<string> tags = null, 
-            Func<ConsulClient> getClient = null)
+        public static AthenaBootstrapper UseConsulHttpCheck(this AthenaBootstrapper bootstrapper, string url)
         {
-            id = id ?? $"{Environment.MachineName.ToLower()}-{bootstrapper.ApplicationName.ToLower()}";
-            var checkId = $"service:{id}:http";
-            getClient = getClient ?? (() => new ConsulClient());
-
             return bootstrapper
-                .When<BootstrapCompleted>()
-                .Do(async (evnt, context) =>
+                .ConfigureWith<ConsulHttpCheckSettings, BootstrapCompleted>(async (config, evnt, context) =>
                 {
-                    var client = getClient();
-                
-                    await client.Agent.ServiceRegister(new AgentServiceRegistration
+                    await config.CLient.Agent.ServiceRegister(new AgentServiceRegistration
                     {
-                        Name = bootstrapper.ApplicationName,
-                        ID = id,
-                        Address = address,
-                        Port = port,
-                        Tags = tags.ToArray()
+                        Name = config.ApplicationName,
+                        ID = config.Id,
+                        Address = config.Address,
+                        Port = config.Port,
+                        Tags = config.Tags.ToArray()
                     }).ConfigureAwait(false);
                 
-                    await client.Agent.CheckRegister(new AgentCheckRegistration
+                    await config.CLient.Agent.CheckRegister(new AgentCheckRegistration
                     {
-                        ServiceID = id,
-                        Name = $"Service '{bootstrapper.ApplicationName}' http check",
-                        ID = checkId,
-                        Status = HealthStatus.Passing,
-                        HTTP = url.ToString()
+                        ServiceID = config.Id,
+                        Name = config.CheckName,
+                        ID = config.CheckId,
+                        Status = config.InitialStatus,
+                        HTTP = url
                     });
-                });
+                }).UpdateSettings(x => x.WithApplicationName(bootstrapper.ApplicationName));
         }
     }
 }
