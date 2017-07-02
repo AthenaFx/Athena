@@ -7,7 +7,7 @@ namespace Athena.Web.Diagnostics.Endpoints.Home
 {
     public class Index
     {
-        public async Task<IndexGetResult> Get(AthenaContext context)
+        public async Task<IndexGetResult> Get(AthenaContext context, IDictionary<string, object> environment)
         {
             var applications = await context
                 .GetSetting<DiagnosticsConfiguration>()
@@ -15,7 +15,7 @@ namespace Athena.Web.Diagnostics.Endpoints.Home
                 .GetApplications()
                 .ConfigureAwait(false);
             
-            var settings = context.GetSetting<DiagnosticsWebApplicationSettings>();
+            var settings = environment.GetCurrentWebApplicationSettings();
             
             return new IndexGetResult(applications, settings.BaseUrl);
         }

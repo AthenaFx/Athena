@@ -9,9 +9,9 @@ namespace Athena.Transactions
     public class HandleTransactions
     {
         private readonly AppFunc _next;
-        private readonly IEnumerable<Transaction> _transactionManagers;
+        private readonly IReadOnlyCollection<Transaction> _transactionManagers;
 
-        public HandleTransactions(AppFunc next, IEnumerable<Transaction> transactionManagers)
+        public HandleTransactions(AppFunc next, IReadOnlyCollection<Transaction> transactionManagers)
         {
             _next = next;
             _transactionManagers = transactionManagers;

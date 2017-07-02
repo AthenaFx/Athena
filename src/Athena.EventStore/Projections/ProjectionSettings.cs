@@ -10,12 +10,20 @@ namespace Athena.EventStore.Projections
 {
     public class ProjectionSettings : AppFunctionDefinition
     {
+        private readonly ICollection<Transaction> _transactions = new List<Transaction>();
         private readonly ICollection<EventStoreProjection> _projections = new List<EventStoreProjection>();
         private EventSerializer _serializer = new JsonEventSerializer();
         private EventStoreConnectionString _connectionString 
             = new EventStoreConnectionString("Ip=127.0.0.1;Port=1113;UserName=admin;Password=changeit;");
 
         private ProjectionsPositionHandler _positionHandler = new StoreProjectionsPositionOnDisc();
+
+        public ProjectionSettings HandleTransactionsWith(Transaction transaction)
+        {
+            _transactions.Add(transaction);
+
+            return this;
+        }
 
         public ProjectionSettings WithSerializer(EventSerializer serializer)
         {
@@ -65,14 +73,14 @@ namespace Athena.EventStore.Projections
             return _positionHandler;
         }
 
-        public override string Name { get; } = "esprojection";
+        public string Name { get; } = "esprojection";
         
         protected override AppFunctionBuilder DefineDefaultApplication(AppFunctionBuilder builder)
         {
             return builder
                 .Last("Retry", next => new Retry(next, 5, TimeSpan.FromSeconds(1), "Projection failed").Invoke)
                 .Last("HandleTransactions",
-                    next => new HandleTransactions(next, Enumerable.Empty<Transaction>()).Invoke)
+                    next => new HandleTransactions(next, _transactions.ToList()).Invoke)
                 .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
                 .Last("ExecuteProjection", next => new ExecuteProjection(next).Invoke);
         }

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Athena.Routing;
 
 namespace Athena.Web.Parsing
 {
@@ -12,13 +11,13 @@ namespace Athena.Web.Parsing
     {
         private readonly AppFunc _next;
 
-        private readonly IReadOnlyCollection<FindMediaTypesForRouterResult>
+        private readonly IReadOnlyCollection<FindMediaTypesForRequest>
             _findMediaTypesForRouterResults;
 
         private readonly IReadOnlyCollection<ResultParser> _parsers;
 
         public UseCorrectOutputParser(AppFunc next,
-            IReadOnlyCollection<FindMediaTypesForRouterResult> findMediaTypesForRouterResults,
+            IReadOnlyCollection<FindMediaTypesForRequest> findMediaTypesForRouterResults,
             IReadOnlyCollection<ResultParser> parsers)
         {
             _next = next;
@@ -28,17 +27,8 @@ namespace Athena.Web.Parsing
 
         public async Task Invoke(IDictionary<string, object> environment)
         {
-            var routerResult = environment.GetRouteResult();
-
-            if (routerResult == null)
-            {
-                await _next(environment).ConfigureAwait(false);
-
-                return;
-            }
-
             var acceptedMediaTypes = environment.GetRequest().Headers.GetAcceptedMediaTypes().ToList();
-            var renderableMediaTypes = await FindRenderableMediaTypes(routerResult, environment).ConfigureAwait(false);
+            var renderableMediaTypes = await FindRenderableMediaTypes(environment).ConfigureAwait(false);
 
             var parser = _parsers
                 .Select(x => new
@@ -49,7 +39,8 @@ namespace Athena.Web.Parsing
                         .SelectMany(y => acceptedMediaTypes.Select(z => new
                         {
                             MediaType = z,
-                            IsMatch = z.Matches(y) && (!renderableMediaTypes.Any() || renderableMediaTypes.Any(z.Matches)),
+                            IsMatch = z.Matches(y) && 
+                                      (!renderableMediaTypes.Any() || renderableMediaTypes.Any(z.Matches)),
                             Priority = z.GetPriority()
                         }))
                         .Where(y => y.IsMatch)
@@ -74,14 +65,14 @@ namespace Athena.Web.Parsing
             }
         }
 
-        protected async Task<IReadOnlyCollection<string>> FindRenderableMediaTypes(RouterResult routerResult,
+        protected async Task<IReadOnlyCollection<string>> FindRenderableMediaTypes(
             IDictionary<string, object> environment)
         {
             var renderable = new List<string>();
 
             foreach (var findMediaTypesForRouterResult in _findMediaTypesForRouterResults)
             {
-                renderable.AddRange(await findMediaTypesForRouterResult.FindAvailableFor(routerResult, environment)
+                renderable.AddRange(await findMediaTypesForRouterResult.FindAvailableFor(environment)
                     .ConfigureAwait(false));
             }
 

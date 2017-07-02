@@ -10,6 +10,7 @@ namespace Athena.EventStore.ProcessManagers
 {
     public class ProcessManagersSettings : AppFunctionDefinition
     {
+        private readonly ICollection<Transaction> _transactions = new List<Transaction>();
         private readonly ICollection<ProcessManager> _processManagers = new List<ProcessManager>();
         private EventSerializer _serializer = new JsonEventSerializer();
         private EventStoreConnectionString _connectionString 
@@ -17,6 +18,13 @@ namespace Athena.EventStore.ProcessManagers
 
         private Func<ProcessManagersSettings, ProcessStateLoader> _getStateLoader = (settings) =>
             new LoadProcessManagerStateFromEventStore(settings.GetConnectionString().CreateConnection());
+        
+        public ProcessManagersSettings HandleTransactionsWith(Transaction transaction)
+        {
+            _transactions.Add(transaction);
+
+            return this;
+        }
 
         public ProcessManagersSettings LoadStateWith(
             Func<ProcessManagersSettings, ProcessStateLoader> getStateLoader)
@@ -67,13 +75,13 @@ namespace Athena.EventStore.ProcessManagers
             return _getStateLoader(this);
         }
 
-        public override string Name { get; } = "esprocessmanager";
+        public string Name { get; } = "esprocessmanager";
         
         protected override AppFunctionBuilder DefineDefaultApplication(AppFunctionBuilder builder)
         {
             return builder
                 .Last("HandleTransactions", next => new HandleTransactions(next,
-                    Enumerable.Empty<Transaction>()).Invoke)
+                    _transactions.ToList()).Invoke)
                 .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
                 .Last("ExecuteProcessManager", next => new ExecuteProcessManager(next).Invoke);
         }

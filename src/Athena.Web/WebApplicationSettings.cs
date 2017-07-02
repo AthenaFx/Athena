@@ -1,3 +1,4 @@
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Athena.Binding;
@@ -14,14 +15,59 @@ using Athena.Web.Validation;
 
 namespace Athena.Web
 {
-    public class DefaultWebApplicationSettings : AppFunctionDefinition
+    public class WebApplicationSettings : AppFunctionDefinition
     {
-        public override string Name { get; } = "default_web";
+        private readonly ICollection<Transaction> _transactions = new List<Transaction>();
+        private readonly ICollection<ValidateRouteResult> _validators = new List<ValidateRouteResult>();
+
+        private Func<WebApplicationSettings, AthenaBootstrapper, IReadOnlyCollection<Route>> _buildRoutes
+            = (settings, bootstrapper) => DefaultRouteConventions
+                .BuildRoutes(x => string.IsNullOrEmpty(settings.BaseUrl) ? x : $"{settings.BaseUrl}/{x}",
+                    bootstrapper.ApplicationAssemblies.ToArray());
+
+        public string Name { get; private set; }
+
+        public string BaseUrl { get; private set; }
+        
+        internal WebApplicationSettings WithName(string name)
+        {
+            Name = name;
+
+            return this;
+        }
+
+        public WebApplicationSettings HandleTransactionsWith(Transaction transaction)
+        {
+            _transactions.Add(transaction);
+
+            return this;
+        }
+
+        public WebApplicationSettings ValidateWith(ValidateRouteResult validator)
+        {
+            _validators.Add(validator);
+
+            return this;
+        }
+
+        public WebApplicationSettings WithBaseUrl(string baseUrl)
+        {
+            BaseUrl = baseUrl;
+
+            return this;
+        }
+
+        public WebApplicationSettings BuildRoutesWith(
+            Func<WebApplicationSettings, AthenaBootstrapper, IReadOnlyCollection<Route>> builder)
+        {
+            _buildRoutes = builder;
+
+            return this;
+        }
         
         protected override AppFunctionBuilder DefineDefaultApplication(AppFunctionBuilder builder)
         {
-            var routes = DefaultRouteConventions
-                .BuildRoutes(builder.Bootstrapper.ApplicationAssemblies.ToArray());
+            var routes = _buildRoutes(this, builder.Bootstrapper);
 
             var fileHandlers = new List<StaticFileReader>
             {
@@ -57,7 +103,7 @@ namespace Athena.Web
                 new FindCacheDataForStaticFileRoute()
             };
 
-            var mediaTypeFinders = new List<FindMediaTypesForRouterResult>
+            var mediaTypeFinders = new List<FindMediaTypesForRequest>
             {
                 new FindAvailableMediaTypesFromMethodRouteResult(binders),
                 new FindAvailableMediaTypesFromStaticFileRouteResult()
@@ -70,22 +116,13 @@ namespace Athena.Web
 
             return builder.Last("HandleExceptions", next => new HandleExceptions(next, async (exception, environment) =>
                 {
-                    var response = environment.GetResponse();
-                    response.StatusCode = 500;
+                    var context = environment.GetAthenaContext();
 
-                    var currentException = exception;
-
-                    while (currentException != null)
-                    {
-                        await response.Write(currentException.Message);
-                        await response.Write(currentException.StackTrace);
-
-                        currentException = currentException.InnerException;
-                    }
+                    await context.Execute($"{Name}_error", environment).ConfigureAwait(false);
                 }).Invoke)
                 .Last("MakeSureUrlIsUnique", next => new MakeSureUrlIsUnique(next).Invoke)
                 .Last("HandleTransactions",
-                    next => new HandleTransactions(next, Enumerable.Empty<Transaction>()).Invoke)
+                    next => new HandleTransactions(next, _transactions.ToList()).Invoke)
                 .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
                 .Last("RouteToResource",
                     next => new RouteToResource(next, routers, x => x.GetResponse().StatusCode = 404).Invoke)
@@ -93,7 +130,7 @@ namespace Athena.Web
                 .Last("UseCorrectOutputParser",
                     next => new UseCorrectOutputParser(next, mediaTypeFinders, outputParsers).Invoke)
                 .Last("ValidateParameters",
-                    next => new ValidateParameters(next, new List<ValidateRouteResult>()).Invoke)
+                    next => new ValidateParameters(next, _validators.ToList()).Invoke)
                 .Last("ValidateCache", next => new ValidateCache(next, routerCacheDataFinders).Invoke)
                 .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke)
                 .Last("WriteOutput",

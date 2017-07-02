@@ -19,7 +19,7 @@ namespace Athena.Web.Sample
         {
             var athenaContext = await AthenaApplications
                 .From("local", typeof(Program).GetTypeInfo().Assembly)
-                .UsingDefaultWeb()
+                .UsingWebApplication()
                 .EnableDiagnostics()
                 .WithWebUi()
                 .Build();

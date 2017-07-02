@@ -7,7 +7,8 @@ namespace Athena.Web.Diagnostics.Endpoints.Home
 {
     public class Type
     {
-        public async Task<TypeGetResult> Get(TypeGetInput input, AthenaContext context)
+        public async Task<TypeGetResult> Get(TypeGetInput input, AthenaContext context,
+            IDictionary<string, object> environment)
         {
             var steps = await context
                 .GetSetting<DiagnosticsConfiguration>()
@@ -15,7 +16,7 @@ namespace Athena.Web.Diagnostics.Endpoints.Home
                 .GetStepsFor(input.Slug, input.Id)
                 .ConfigureAwait(false);
             
-            var settings = context.GetSetting<DiagnosticsWebApplicationSettings>();
+            var settings = environment.GetCurrentWebApplicationSettings();
             
             return new TypeGetResult(input.Slug, input.Id, steps, settings.BaseUrl);
         }

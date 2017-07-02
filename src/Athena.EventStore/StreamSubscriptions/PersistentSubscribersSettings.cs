@@ -15,11 +15,19 @@ namespace Athena.EventStore.StreamSubscriptions
 {
     public class PersistentSubscribersSettings : AppFunctionDefinition
     {
+        private readonly ICollection<Transaction> _transactions = new List<Transaction>();
         private readonly ICollection<Tuple<string, int>> _streams = new List<Tuple<string, int>>();
         private EventSerializer _serializer = new JsonEventSerializer();
         private EventStoreConnectionString _connectionString 
             = new EventStoreConnectionString("Ip=127.0.0.1;Port=1113;UserName=admin;Password=changeit;");
         
+        public PersistentSubscribersSettings HandleTransactionsWith(Transaction transaction)
+        {
+            _transactions.Add(transaction);
+
+            return this;
+        }
+
         public PersistentSubscribersSettings SubscribeToStream(string stream, int workers = 1)
         {
             _streams.Add(new Tuple<string, int>(stream, workers));
@@ -56,7 +64,7 @@ namespace Athena.EventStore.StreamSubscriptions
             return _connectionString;
         }
 
-        public override string Name { get; } = "persistentsubscription";
+        public string Name { get; } = "persistentsubscription";
         
         protected override AppFunctionBuilder DefineDefaultApplication(AppFunctionBuilder builder)
         {
@@ -80,7 +88,7 @@ namespace Athena.EventStore.StreamSubscriptions
 
             return builder
                 .Last("HandleTransactions",
-                    next => new HandleTransactions(next, Enumerable.Empty<Transaction>()).Invoke)
+                    next => new HandleTransactions(next, _transactions.ToList()).Invoke)
                 .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
                 .Last("RouteToResource", next => new RouteToResource(next, routers).Invoke)
                 .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke);

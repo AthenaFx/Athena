@@ -10,7 +10,11 @@ namespace Athena.Configuration
     public abstract class PartConfiguration : AthenaBootstrapper
     {
         private readonly AthenaBootstrapper _bootstrapper;
-        private Func<object, object> _configureParent = x => x;
+
+        private Func<object, object, AthenaSetupContext, Task<object>> _configureParent =
+            (x, y, z) => Task.FromResult(x);
+        
+        protected readonly ConcurrentBag<PartConfiguration> Children = new ConcurrentBag<PartConfiguration>();
 
         protected PartConfiguration(AthenaBootstrapper bootstrapper, string key)
         {
@@ -60,14 +64,19 @@ namespace Athena.Configuration
 
         internal abstract Task TrySetUp(SetupEvent evnt, AthenaSetupContext context);
 
-        internal void ConfigureParentWith(Func<object, object> config)
+        internal void ConfigureParentWith(Func<object, object, AthenaSetupContext, Task<object>> config)
         {
             _configureParent = config;
         }
 
-        internal object ConfigureParent(object parent)
+        internal async Task<object> ConfigureParent(object parent, AthenaSetupContext context)
         {
-            return _configureParent(parent);
+            var me = GetPart();
+
+            foreach (var child in Children)
+                me = await child.ConfigureParent(me, context).ConfigureAwait(false);
+
+            return await _configureParent(parent, me, context).ConfigureAwait(false);
         }
 
         internal abstract object GetPart();
@@ -75,68 +84,76 @@ namespace Athena.Configuration
     
     public class PartConfiguration<TPart> : PartConfiguration where TPart : class, new()
     {
+        private TPart _part;
         private bool _hasSetup;
         private readonly AthenaBootstrapper _bootstrapper;
-        private readonly ConcurrentBag<Func<TPart, TPart>> _configurations = new ConcurrentBag<Func<TPart, TPart>>();
-        private readonly ConcurrentBag<PartConfiguration> _children = new ConcurrentBag<PartConfiguration>();
         
         private readonly
             ConcurrentBag<Tuple<Func<SetupEvent, bool>, Func<object, SetupEvent, AthenaSetupContext, Task>>> _setups =
-                new ConcurrentBag<Tuple<Func<SetupEvent, bool>, Func<object, SetupEvent, AthenaSetupContext, Task>>>()
-            ;
+                new ConcurrentBag<Tuple<Func<SetupEvent, bool>, Func<object, SetupEvent, AthenaSetupContext, Task>>>();
 
         internal PartConfiguration(AthenaBootstrapper bootstrapper, string key) 
             : base(bootstrapper, key)
         {
             _bootstrapper = bootstrapper;
+            _part = new TPart();
         }
 
         public PartConfiguration<TPart> Configure(Func<TPart, TPart> configure)
         {
-            _configurations.Add(configure);
+            _part = configure(_part);
 
             return this;
         }
 
-        public PartConfiguration<TChild> Child<TChild>(Func<TPart, TChild, TPart> configureParent, string key = null) 
+        public PartConfiguration<TChild> Child<TChild>(
+            Func<TPart, TChild, AthenaSetupContext, Task<TPart>> configureParent, string key = null) 
             where TChild : class, new()
         {
-            var existingChild = _children.OfType<PartConfiguration<TChild>>().FirstOrDefault();
-
-            if (existingChild != null)
-                return existingChild;
-            
             var child = _bootstrapper.ConfigureWith<TChild>(key);
-            child.ConfigureParentWith(parent => configureParent((TPart)parent, (TChild)child.GetPart()));
+            child.ConfigureParentWith(async (parent, me, context) => 
+                await configureParent((TPart) parent, (TChild) me, context).ConfigureAwait(false));
 
-            _children.Add(child);
+            Children.Add(child);
 
             return child;
         }
         
+        public PartConfiguration<TChild> Child<TChild>(
+            Func<TPart, TChild, AthenaSetupContext, TPart> configureParent, string key = null) 
+            where TChild : class, new()
+        {
+            return Child<TChild>((parent, child, context) => 
+                Task.FromResult(configureParent(parent, child, context)), key);
+        }
+        
         internal override async Task TrySetUp(SetupEvent evnt, AthenaSetupContext context)
         {
+            var availableSetups = _setups
+                .Where(x => x.Item1(evnt))
+                .ToList();
+            
+            if(!availableSetups.Any())
+                return;
+
+            if (!_hasSetup)
+            {
+                foreach (var child in Children)
+                    _part = (TPart) (await child.ConfigureParent(_part, context).ConfigureAwait(false));
+            }
+            
             _hasSetup = true;
 
             var part = GetPart();
             
-            await Task.WhenAll(_setups
-                .Where(x => x.Item1(evnt))
+            await Task.WhenAll(availableSetups
                 .Select(x => x.Item2(part, evnt, context)))
                 .ConfigureAwait(false);
         }
 
         internal override object GetPart()
         {
-            var part = _configurations.Aggregate(new TPart(), (current, configuration) => configuration(current));
-
-            if (_hasSetup)
-            {
-                part = _children.Aggregate(part, (current, child) =>
-                    (TPart) child.ConfigureParent(current));
-            }
-
-            return part;
+            return _part;
         }
 
         internal void WithSetup<TEvent>(Func<TPart, TEvent, AthenaSetupContext, Task> setup,

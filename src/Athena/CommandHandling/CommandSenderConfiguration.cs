@@ -13,7 +13,16 @@ namespace Athena.CommandHandling
 {
     public class CommandSenderConfiguration : AppFunctionDefinition
     {
-        public override string Name { get; } = "commandhandler";
+        private readonly ICollection<Transaction> _transactions = new List<Transaction>();
+        
+        public string Name { get; } = "commandhandler";
+        
+        public CommandSenderConfiguration HandleTransactionsWith(Transaction transaction)
+        {
+            _transactions.Add(transaction);
+
+            return this;
+        }
         
         protected override AppFunctionBuilder DefineDefaultApplication(AppFunctionBuilder builder)
         {
@@ -40,7 +49,7 @@ namespace Athena.CommandHandling
             
             return builder
                 .Last("HandleTransactions",
-                    next => new HandleTransactions(next, Enumerable.Empty<Transaction>()).Invoke)
+                    next => new HandleTransactions(next, _transactions.ToList()).Invoke)
                 .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
                 .Last("RouteToResource", next => new RouteToResource(next, routers, x =>
                     throw new CommandHandlerNotFoundException(x.Get<object>("command").GetType())).Invoke)

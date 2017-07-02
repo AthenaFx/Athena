@@ -8,8 +8,6 @@ namespace Athena.Configuration
         private readonly ICollection<Func<AppFunctionBuilder, AppFunctionBuilder>> _modifiers 
             = new List<Func<AppFunctionBuilder, AppFunctionBuilder>>();
 
-        public abstract string Name { get; }
-        
         internal virtual void ModifyWith(Func<AppFunctionBuilder, AppFunctionBuilder> modifier)
         {
             _modifiers.Add(modifier);

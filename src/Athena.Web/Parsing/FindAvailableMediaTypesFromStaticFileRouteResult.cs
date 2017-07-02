@@ -5,11 +5,11 @@ using Athena.Web.Routing;
 
 namespace Athena.Web.Parsing
 {
-    public class FindAvailableMediaTypesFromStaticFileRouteResult : FindMediaTypesForRouterResult
+    public class FindAvailableMediaTypesFromStaticFileRouteResult : FindMediaTypesForRequest
     {
-        public Task<IReadOnlyCollection<string>> FindAvailableFor(RouterResult routerResult, IDictionary<string, object> environment)
+        public Task<IReadOnlyCollection<string>> FindAvailableFor(IDictionary<string, object> environment)
         {
-            var staticFileResult = routerResult as StaticFileRouterResult;
+            var staticFileResult = environment.GetRouteResult() as StaticFileRouterResult;
 
             if(staticFileResult == null)
                 return Task.FromResult<IReadOnlyCollection<string>>(new List<string>());

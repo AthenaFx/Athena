@@ -41,8 +41,15 @@ namespace Athena.Configuration
             if (string.IsNullOrEmpty(key))
                 key = typeof(TPart).AssemblyQualifiedName;
 
-            return (PartConfiguration<TPart>) _partConfigurations.GetOrAdd(key,
-                x => new PartConfiguration<TPart>(this, key));
+            PartConfiguration configuration;
+
+            if (!_partConfigurations.TryGetValue(key, out configuration))
+            {
+                throw new InvalidOperationException(
+                    $"There is no configuration part of type {typeof(TPart)} with key {key}");
+            }
+            
+            return (PartConfiguration<TPart>) configuration;
         }
 
         public PartConfiguration<TPart> ConfigureWith<TPart, TEvent>(

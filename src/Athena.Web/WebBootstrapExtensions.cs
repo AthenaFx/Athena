@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Athena.Configuration;
 using Athena.PartialApplications;
@@ -9,15 +10,15 @@ namespace Athena.Web
     {
         private static bool _hasConfiguredWeb;
         
-        public static PartConfiguration<WebApplicationsSettings> UsingWeb(this AthenaBootstrapper bootstrapper)
+        internal static PartConfiguration<WebApplicationsRouterSettings> UsingWeb(this AthenaBootstrapper bootstrapper)
         {
             if (_hasConfiguredWeb)
-                return bootstrapper.Configure<WebApplicationsSettings>();
+                return bootstrapper.Configure<WebApplicationsRouterSettings>();
             
             _hasConfiguredWeb = true;
                 
             return bootstrapper
-                .ConfigureWith<WebApplicationsSettings>((conf, context) =>
+                .ConfigureWith<WebApplicationsRouterSettings>((conf, context) =>
                 {
                     var applications = conf.GetApplications();
 
@@ -38,13 +39,37 @@ namespace Athena.Web
                 });
         }
 
-        public static PartConfiguration<DefaultWebApplicationSettings> UsingDefaultWeb(
-            this AthenaBootstrapper bootstrapper)
+        public static PartConfiguration<WebApplicationSettings> UsingWebApplication(
+            this AthenaBootstrapper bootstrapper, string name = "default_web")
         {
-            return bootstrapper
+            var key = $"_web_application_{name}";
+            
+            var appConfiguration = bootstrapper
                 .UsingWeb()
-                .Child<DefaultWebApplicationSettings>((webSettings, defaultWebAppSettings) => 
-                    webSettings.AddApplication(defaultWebAppSettings));
+                .Child<WebApplicationSettings>((webSettings, webAppSettings, _) =>
+                    webSettings.AddApplication(webAppSettings,
+                        (env, settings) => string.IsNullOrEmpty(settings.BaseUrl)
+                                           || env.GetRequest().Uri.LocalPath.StartsWith($"/{settings.BaseUrl}")), key)
+                .Configure(x => x.WithName(name));
+
+            appConfiguration.Child<WebApplicationRequestErrorSettings>(async (webAppSettings, errorSettings, context) =>
+            {
+                await context.DefineApplication($"{webAppSettings.Name}_error", errorSettings.GetApplicationBuilder())
+                    .ConfigureAwait(false);
+
+                return webAppSettings;
+            }, $"{key}_error");
+            
+            return appConfiguration;
+        }
+
+        public static WebApplicationSettings GetCurrentWebApplicationSettings(
+            this IDictionary<string, object> environment)
+        {
+            var context = environment.GetAthenaContext();
+
+            return context.GetSetting<WebApplicationSettings>(
+                $"_web_application_{environment.GetCurrentApplication()}");
         }
     }
 }

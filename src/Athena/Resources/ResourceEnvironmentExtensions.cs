@@ -9,7 +9,7 @@ namespace Athena.Resources
             return environment.Get<object>("resource-result");
         }
 
-        internal static void SetResourceResult(this IDictionary<string, object> environment, 
+        public static void SetResourceResult(this IDictionary<string, object> environment, 
             object resourceResult)
         {
             environment["resource-result"] = resourceResult;

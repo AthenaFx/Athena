@@ -8,7 +8,7 @@ using Athena.Routing;
 
 namespace Athena.Web.Parsing
 {
-    public class FindAvailableMediaTypesFromMethodRouteResult : FindMediaTypesForRouterResult
+    public class FindAvailableMediaTypesFromMethodRouteResult : FindMediaTypesForRequest
     {
         private readonly IReadOnlyCollection<EnvironmentDataBinder> _environmentDataBinders;
         private readonly Func<Type, object> _getInstance;
@@ -20,9 +20,9 @@ namespace Athena.Web.Parsing
             _getInstance = getInstance ?? Activator.CreateInstance;
         }
 
-        public async Task<IReadOnlyCollection<string>> FindAvailableFor(RouterResult routerResult, IDictionary<string, object> environment)
+        public async Task<IReadOnlyCollection<string>> FindAvailableFor(IDictionary<string, object> environment)
         {
-            var methodRouterResult = routerResult as MethodResourceRouterResult;
+            var methodRouterResult = environment.GetRouteResult() as MethodResourceRouterResult;
 
             if(methodRouterResult == null)
                 return new List<string>();
