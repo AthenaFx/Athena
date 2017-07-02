@@ -11,11 +11,19 @@ namespace Athena.Web.Validation
     {
         private readonly AppFunc _next;
         private readonly IReadOnlyCollection<ValidateRouteResult> _validators;
+        private readonly AppFunc _onInvalid;
 
-        public ValidateParameters(AppFunc next, IReadOnlyCollection<ValidateRouteResult> validators)
+        public ValidateParameters(AppFunc next, IReadOnlyCollection<ValidateRouteResult> validators, 
+            AppFunc onInvalid = null)
         {
             _next = next;
             _validators = validators;
+            _onInvalid = onInvalid ?? (e =>
+            {
+                e.GetResponse().StatusCode = 422;
+                
+                return Task.CompletedTask;
+            });
         }
 
         public async Task Invoke(IDictionary<string, object> environment)
@@ -38,7 +46,7 @@ namespace Athena.Web.Validation
 
             if (!validationResult.IsValid)
             {
-                environment.GetResponse().StatusCode = 422;
+                await _onInvalid(environment).ConfigureAwait(false);
 
                 return;
             }

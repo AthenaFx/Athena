@@ -59,7 +59,7 @@ namespace Athena.Web
 
                 return webAppSettings;
             }, $"{key}_error");
-
+            
             appConfiguration.Child<WebApplicationRequestNotFoundSettings>(
                 async (webAppSettings, notFoundSettings, context) =>
                 {
@@ -69,6 +69,26 @@ namespace Athena.Web
 
                     return webAppSettings;
                 }, $"{key}_missing");
+            
+            appConfiguration.Child<WebApplicationRequestUnAuthorizedSettings>(
+                async (webAppSettings, notFoundSettings, context) =>
+                {
+                    await context
+                        .DefineApplication($"{webAppSettings.Name}_unauthorized", notFoundSettings.GetApplicationBuilder())
+                        .ConfigureAwait(false);
+
+                    return webAppSettings;
+                }, $"{key}_unauthorized");
+            
+            appConfiguration.Child<WebApplicationRequestValidationErrorSettings>(
+                async (webAppSettings, notFoundSettings, context) =>
+                {
+                    await context
+                        .DefineApplication($"{webAppSettings.Name}_invalid", notFoundSettings.GetApplicationBuilder())
+                        .ConfigureAwait(false);
+
+                    return webAppSettings;
+                }, $"{key}_invalid");
             
             return appConfiguration;
         }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Athena.Authorization;
 using Athena.Binding;
 using Athena.Configuration;
 using Athena.MetaData;
@@ -19,6 +20,8 @@ namespace Athena.Web
     {
         private readonly ICollection<Transaction> _transactions = new List<Transaction>();
         private readonly ICollection<ValidateRouteResult> _validators = new List<ValidateRouteResult>();
+        private readonly ICollection<Authorizer> _authorizers = new List<Authorizer>();
+        private IdentityFinder _identityFinder = new NullIdentityFinder();
 
         private Func<WebApplicationSettings, AthenaBootstrapper, IReadOnlyCollection<Route>> _buildRoutes
             = (settings, bootstrapper) => DefaultRouteConventions
@@ -39,6 +42,20 @@ namespace Athena.Web
         public WebApplicationSettings HandleTransactionsWith(Transaction transaction)
         {
             _transactions.Add(transaction);
+
+            return this;
+        }
+
+        public WebApplicationSettings AuthorizeRequestsWith(Authorizer authorizer)
+        {
+            _authorizers.Add(authorizer);
+
+            return this;
+        }
+
+        public WebApplicationSettings FindCurrentIdentityWith(IdentityFinder identityFinder)
+        {
+            _identityFinder = identityFinder;
 
             return this;
         }
@@ -135,8 +152,20 @@ namespace Athena.Web
                 }).Invoke)
                 .Last("UseCorrectOutputParser",
                     next => new UseCorrectOutputParser(next, mediaTypeFinders, outputParsers).Invoke)
+                .Last("Authorize", next => new Authorize(next, _authorizers.ToList(), _identityFinder,
+                    async environment =>
+                    {
+                        var context = environment.GetAthenaContext();
+
+                        await context.Execute($"{Name}_unauthorized", environment).ConfigureAwait(false);
+                    }).Invoke)
                 .Last("ValidateParameters",
-                    next => new ValidateParameters(next, _validators.ToList()).Invoke)
+                    next => new ValidateParameters(next, _validators.ToList(), async environment => 
+                    {
+                        var context = environment.GetAthenaContext();
+
+                        await context.Execute($"{Name}_invalid", environment).ConfigureAwait(false);
+                    }).Invoke)
                 .Last("ValidateCache", next => new ValidateCache(next, routerCacheDataFinders).Invoke)
                 .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke)
                 .Last("WriteOutput",
