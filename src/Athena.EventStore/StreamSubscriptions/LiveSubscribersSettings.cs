@@ -86,6 +86,7 @@ namespace Athena.EventStore.StreamSubscriptions
                 new MethodResourceExecutor(binders)
             };
 
+            //TODO:Make sure we can have multiple subscribers to same event
             return builder
                 .Last("Retry", next => new Retry(next, 5, TimeSpan.FromSeconds(1), "Subscription failed").Invoke)
                 .Last("HandleTransactions",

@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -47,11 +46,17 @@ namespace Athena.CommandHandling
                 new MethodResourceExecutor(binders)
             };
             
+            var routeCheckers = new List<CheckIfResourceExists>
+            {
+                new CheckIfRouteExists()
+            };
+            
             return builder
                 .Last("HandleTransactions",
                     next => new HandleTransactions(next, _transactions.ToList()).Invoke)
                 .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
-                .Last("RouteToResource", next => new RouteToResource(next, routers, x =>
+                .Last("RouteToResource", next => new RouteToResource(next, routers).Invoke)
+                .Last("EnsureEndpointExists", next => new EnsureEndpointExists(next, routeCheckers, x => 
                     throw new CommandHandlerNotFoundException(x.Get<object>("command").GetType())).Invoke)
                 .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke);
         }

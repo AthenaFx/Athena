@@ -111,6 +111,7 @@ namespace Athena.Web
 
             var routeCheckers = new List<CheckIfResourceExists>
             {
+                new CheckIfRouteExists(),
                 new CheckIfMethodResourceExists(binders)
             };
 
@@ -125,8 +126,13 @@ namespace Athena.Web
                     next => new HandleTransactions(next, _transactions.ToList()).Invoke)
                 .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
                 .Last("RouteToResource",
-                    next => new RouteToResource(next, routers, x => x.GetResponse().StatusCode = 404).Invoke)
-                .Last("EnsureEndpointExists", next => new EnsureEndpointExists(next, routeCheckers).Invoke)
+                    next => new RouteToResource(next, routers).Invoke)
+                .Last("EnsureEndpointExists", next => new EnsureEndpointExists(next, routeCheckers, async environment => 
+                {
+                    var context = environment.GetAthenaContext();
+
+                    await context.Execute($"{Name}_missing", environment).ConfigureAwait(false);
+                }).Invoke)
                 .Last("UseCorrectOutputParser",
                     next => new UseCorrectOutputParser(next, mediaTypeFinders, outputParsers).Invoke)
                 .Last("ValidateParameters",

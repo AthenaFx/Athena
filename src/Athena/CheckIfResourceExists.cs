@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Athena.Routing;
 
-namespace Athena.Web.Validation
+namespace Athena
 {
     public interface CheckIfResourceExists
     {

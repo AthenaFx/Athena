@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Athena.Routing;
 
-namespace Athena.Web.Validation
+namespace Athena
 {
     using AppFunc = Func<IDictionary<string, object>, Task>;
 
@@ -11,11 +11,14 @@ namespace Athena.Web.Validation
     {
         private readonly AppFunc _next;
         private readonly IReadOnlyCollection<CheckIfResourceExists> _resourceCheckers;
+        private readonly AppFunc _onMissing;
 
-        public EnsureEndpointExists(AppFunc next, IReadOnlyCollection<CheckIfResourceExists> resourceCheckers)
+        public EnsureEndpointExists(AppFunc next, IReadOnlyCollection<CheckIfResourceExists> resourceCheckers, 
+            AppFunc onMissing)
         {
             _next = next;
             _resourceCheckers = resourceCheckers;
+            _onMissing = onMissing;
         }
 
         public async Task Invoke(IDictionary<string, object> environment)
@@ -30,7 +33,7 @@ namespace Athena.Web.Validation
 
                     if (!exists)
                     {
-                        environment.GetResponse().StatusCode = 404;
+                        await _onMissing(environment).ConfigureAwait(false);
 
                         return;
                     }

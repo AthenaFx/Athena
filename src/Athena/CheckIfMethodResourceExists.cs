@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Athena.Binding;
 using Athena.Routing;
 
-namespace Athena.Web.Validation
+namespace Athena
 {
     public class CheckIfMethodResourceExists : CheckIfResourceExists
     {

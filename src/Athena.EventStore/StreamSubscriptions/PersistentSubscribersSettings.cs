@@ -86,6 +86,7 @@ namespace Athena.EventStore.StreamSubscriptions
                 new MethodResourceExecutor(binders)
             };
 
+            //TODO:Make sure we can have multiple subscribers to same event
             return builder
                 .Last("HandleTransactions",
                     next => new HandleTransactions(next, _transactions.ToList()).Invoke)

@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Athena.Configuration;
@@ -6,7 +5,7 @@ using Athena.Web.Parsing;
 
 namespace Athena.Web
 {
-    public class WebApplicationRequestErrorSettings : AppFunctionDefinition
+    public class WebApplicationRequestNotFoundSettings : AppFunctionDefinition
     {
         protected override AppFunctionBuilder DefineDefaultApplication(AppFunctionBuilder builder)
         {
@@ -25,9 +24,8 @@ namespace Athena.Web
                 .Last("UseCorrectOutputParser", 
                     next => new UseCorrectOutputParser(next, mediaTypeFinders, outputParsers).Invoke)
                 .Last("SetStaticOutputResult", 
-                    next => new SetStaticOutputResult(next, 
-                        x => new ExceptionResult(x.Get<Exception>("exception"))).Invoke)
-                .Last("WriteOutput", next => new WriteOutput(next, new StaticStatusCodeFinder(500)).Invoke);
+                    next => new SetStaticOutputResult(next, x => new NotFoundResult()).Invoke)
+                .Last("WriteOutput", next => new WriteOutput(next, new StaticStatusCodeFinder(404)).Invoke);
         }
     }
 }

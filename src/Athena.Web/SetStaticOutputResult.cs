@@ -7,20 +7,20 @@ namespace Athena.Web
 {
     using AppFunc = Func<IDictionary<string, object>, Task>;
     
-    public class SetLastExceptionOutput
+    public class SetStaticOutputResult
     {
         private readonly AppFunc _next;
+        private readonly Func<IDictionary<string, object>, object> _getOutput;
 
-        public SetLastExceptionOutput(AppFunc next)
+        public SetStaticOutputResult(AppFunc next, Func<IDictionary<string, object>, object> getOutput)
         {
             _next = next;
+            _getOutput = getOutput;
         }
 
         public Task Invoke(IDictionary<string, object> environment)
         {
-            var exception = environment.Get<Exception>("exception");
-            
-            environment.SetResourceResult(new ExceptionResult(exception));
+            environment.SetResourceResult(_getOutput(environment));
 
             return _next(environment);
         }

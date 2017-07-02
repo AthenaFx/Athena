@@ -59,6 +59,16 @@ namespace Athena.Web
 
                 return webAppSettings;
             }, $"{key}_error");
+
+            appConfiguration.Child<WebApplicationRequestNotFoundSettings>(
+                async (webAppSettings, notFoundSettings, context) =>
+                {
+                    await context
+                        .DefineApplication($"{webAppSettings.Name}_missing", notFoundSettings.GetApplicationBuilder())
+                        .ConfigureAwait(false);
+
+                    return webAppSettings;
+                }, $"{key}_missing");
             
             return appConfiguration;
         }
