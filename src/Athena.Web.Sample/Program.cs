@@ -21,7 +21,7 @@ namespace Athena.Web.Sample
                 .From("local", typeof(Program).GetTypeInfo().Assembly)
                 .UsingDefaultWeb()
                 .EnableDiagnostics()
-                .WithUiAt("_diagnostics")
+                .WithWebUi()
                 .Build();
             
             var host = new WebHostBuilder()

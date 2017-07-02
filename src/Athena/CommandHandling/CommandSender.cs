@@ -27,17 +27,10 @@ namespace Athena.CommandHandling
         {
             return bootstrapper.ConfigureWith<CommandSenderConfiguration>((conf, context) =>
             {
-                context.DefineApplication("commandhandler", conf.GetBuilder());
+                context.DefineApplication(conf.Name, conf.GetApplicationBuilder());
                 
                 return Task.CompletedTask;
             });
-        }
-
-        public static PartConfiguration<CommandSenderConfiguration> ConfigureApplication(
-            this PartConfiguration<CommandSenderConfiguration> config, 
-            Func<AppFunctionBuilder, AppFunctionBuilder> configure)
-        {
-            return config.UpdateSettings(x => x.ConfigureApplication(configure));
         }
     }
 }

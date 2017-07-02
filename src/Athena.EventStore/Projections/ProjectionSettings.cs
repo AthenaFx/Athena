@@ -8,14 +8,8 @@ using Athena.Transactions;
 
 namespace Athena.EventStore.Projections
 {
-    public class ProjectionSettings
+    public class ProjectionSettings : AppFunctionDefinition
     {
-        private Func<AppFunctionBuilder, AppFunctionBuilder> _builder = builder => builder
-            .Last("Retry", next => new Retry(next, 5, TimeSpan.FromSeconds(1), "Projection failed").Invoke)
-            .Last("HandleTransactions", next => new HandleTransactions(next, Enumerable.Empty<Transaction>()).Invoke)
-            .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
-            .Last("ExecuteProjection", next => new ExecuteProjection(next).Invoke);
-        
         private readonly ICollection<EventStoreProjection> _projections = new List<EventStoreProjection>();
         private EventSerializer _serializer = new JsonEventSerializer();
         private EventStoreConnectionString _connectionString 
@@ -23,15 +17,6 @@ namespace Athena.EventStore.Projections
 
         private ProjectionsPositionHandler _positionHandler = new StoreProjectionsPositionOnDisc();
 
-        public ProjectionSettings ConfigureApplication(Func<AppFunctionBuilder, AppFunctionBuilder> configure)
-        {
-            var currentBuilder = _builder;
-
-            _builder = (builder => configure(currentBuilder(builder)));
-
-            return this;
-        }
-        
         public ProjectionSettings WithSerializer(EventSerializer serializer)
         {
             _serializer = serializer;
@@ -79,10 +64,17 @@ namespace Athena.EventStore.Projections
         {
             return _positionHandler;
         }
+
+        public override string Name { get; } = "esprojection";
         
-        internal Func<AppFunctionBuilder, AppFunctionBuilder> GetBuilder()
+        protected override AppFunctionBuilder DefineDefaultApplication(AppFunctionBuilder builder)
         {
-            return _builder;
+            return builder
+                .Last("Retry", next => new Retry(next, 5, TimeSpan.FromSeconds(1), "Projection failed").Invoke)
+                .Last("HandleTransactions",
+                    next => new HandleTransactions(next, Enumerable.Empty<Transaction>()).Invoke)
+                .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
+                .Last("ExecuteProjection", next => new ExecuteProjection(next).Invoke);
         }
     }
 }

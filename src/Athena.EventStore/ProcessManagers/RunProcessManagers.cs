@@ -75,7 +75,7 @@ namespace Athena.EventStore.ProcessManagers
                         processManager.Name,
                         async (subscription, evnt) =>
                             await PushEventToProcessManager(processManager, settings.GetSerializer().DeSerialize(evnt),
-                                subscription, context, stateLoader).ConfigureAwait(false),
+                                subscription, context, stateLoader, settings).ConfigureAwait(false),
                         async (subscription, reason, exception) =>
                             await SubscriptionDropped(processManager, reason, exception, context, settings, stateLoader)
                                 .ConfigureAwait(false),
@@ -101,7 +101,7 @@ namespace Athena.EventStore.ProcessManagers
 
         protected virtual async Task PushEventToProcessManager(ProcessManager processManager,
             DeSerializationResult evnt, EventStorePersistentSubscriptionBase subscription, AthenaContext context,
-            ProcessStateLoader stateLoader)
+            ProcessStateLoader stateLoader, ProcessManagersSettings settings)
         {
             if (!_running)
                 return;
@@ -119,7 +119,7 @@ namespace Athena.EventStore.ProcessManagers
                     ["context"] = new ProcessManagerExecutionContext(processManager, evnt, stateLoader)
                 };
 
-                await context.Execute("esprocessmanager", requestEnvironment).ConfigureAwait(false);
+                await context.Execute(settings.Name, requestEnvironment).ConfigureAwait(false);
                 
                 subscription.Acknowledge(evnt.OriginalEvent);
             }

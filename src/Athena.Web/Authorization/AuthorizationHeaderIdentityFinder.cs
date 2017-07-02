@@ -7,16 +7,16 @@ namespace Athena.Web.Authorization
 {
     public class AuthorizationHeaderIdentityFinder : IdentityFinder
     {
-        private readonly IReadOnlyDictionary<string, Func<string, IDictionary<string, object>, Task<Identity>>> 
+        private readonly IReadOnlyDictionary<string, Func<string, IDictionary<string, object>, Task<AuthenticationIdentity>>> 
             _identityFinderTypes;
 
         public AuthorizationHeaderIdentityFinder(
-            IReadOnlyDictionary<string, Func<string, IDictionary<string, object>, Task<Identity>>> identityFinderTypes)
+            IReadOnlyDictionary<string, Func<string, IDictionary<string, object>, Task<AuthenticationIdentity>>> identityFinderTypes)
         {
             _identityFinderTypes = identityFinderTypes;
         }
 
-        public async Task<Identity> FindIdentityFor(IDictionary<string, object> environment)
+        public async Task<AuthenticationIdentity> FindIdentityFor(IDictionary<string, object> environment)
         {
             var authorization = environment.GetRequest().Headers.GetHeader("Authorization");
 

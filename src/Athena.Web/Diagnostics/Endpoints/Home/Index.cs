@@ -15,15 +15,20 @@ namespace Athena.Web.Diagnostics.Endpoints.Home
                 .GetApplications()
                 .ConfigureAwait(false);
             
-            return new IndexGetResult(applications);
+            var settings = context.GetSetting<DiagnosticsWebApplicationSettings>();
+            
+            return new IndexGetResult(applications, settings.BaseUrl);
         }
     }
 
     public class IndexGetResult
     {
-        public IndexGetResult(IEnumerable<string> applications)
+        private readonly string _baseUrl;
+        
+        public IndexGetResult(IEnumerable<string> applications, string baseUrl)
         {
             Applications = applications;
+            _baseUrl = baseUrl;
         }
 
         public IEnumerable<string> Applications { get; }
@@ -35,7 +40,7 @@ namespace Athena.Web.Diagnostics.Endpoints.Home
             foreach (var application in Applications)
             {
                 applicationsContentBuilder.Append($@"<li>
-                                                        <a href=""/{WebDiagnostics.BaseUrl}/{application}"">
+                                                        <a href=""/{_baseUrl}/{application}"">
                                                             {application}
                                                         </a>
                                                     </li>");

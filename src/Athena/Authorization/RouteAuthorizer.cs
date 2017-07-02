@@ -7,22 +7,26 @@ namespace Athena.Authorization
 {
     public class RouteAuthorizer<TRouterResult> : Authorizer where TRouterResult : RouterResult
     {
-        private readonly Func<RouterResult, Identity, IDictionary<string, object>, Task<AuthorizationResult>> _authorize;
+        private readonly 
+            Func<RouterResult, AuthenticationIdentity, IDictionary<string, object>, Task<AuthorizationResult>> 
+            _authorize;
 
         public RouteAuthorizer(
-            Func<RouterResult, Identity, IDictionary<string, object>, Task<AuthorizationResult>> authorize)
+            Func<RouterResult, AuthenticationIdentity, IDictionary<string, object>, Task<AuthorizationResult>> 
+                authorize)
         {
             _authorize = authorize;
         }
 
-        public async Task<AuthorizationResult> IsAuthorized(IDictionary<string, object> environment, Identity identity)
+        public async Task<AuthorizationResult> IsAuthorized(IDictionary<string, object> environment, 
+            AuthenticationIdentity authenticationIdentity)
         {
             var routerResult = environment.GetRouteResult();
 
             if(!(routerResult is TRouterResult))
                 return AuthorizationResult.NotApplied;
 
-            return await _authorize((TRouterResult) routerResult, identity, environment)
+            return await _authorize((TRouterResult) routerResult, authenticationIdentity, environment)
                 .ConfigureAwait(false);
         }
     }

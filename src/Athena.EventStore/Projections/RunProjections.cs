@@ -80,7 +80,8 @@ namespace Athena.EventStore.Projections
                             x => messageProcessor.MessageArrived += x, x => messageProcessor.MessageArrived -= x)
                         .Buffer(TimeSpan.FromSeconds(1), 5000)
                         .Select(async x => await HandleEvents(projection, x,
-                                y => messageProcessor.OnMessageHandled(y.OriginalEvent.OriginalEventNumber), context)
+                                y => messageProcessor.OnMessageHandled(y.OriginalEvent.OriginalEventNumber), context,
+                                settings)
                             .ConfigureAwait(false))
                         .Subscribe();
 
@@ -144,7 +145,7 @@ namespace Athena.EventStore.Projections
         }
         
         private async Task HandleEvents(EventStoreProjection projection, IEnumerable<DeSerializationResult> events,
-            Action<DeSerializationResult> handled, AthenaContext context)
+            Action<DeSerializationResult> handled, AthenaContext context, ProjectionSettings settings)
         {
             if (!_running)
                 return;
@@ -165,7 +166,7 @@ namespace Athena.EventStore.Projections
                     ["context"] = new ProjectionContext(projection, eventsList, handled)
                 };
 
-                await context.Execute("esprojection", requestEnvironment).ConfigureAwait(false);
+                await context.Execute(settings.Name, requestEnvironment).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

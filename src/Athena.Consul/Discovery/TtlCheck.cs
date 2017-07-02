@@ -30,7 +30,7 @@ namespace Athena.Consul.Discovery
                         Status = config.InitialStatus,
                         TTL = config.Ttl
                     });
-                }).UpdateSettings(x => x.WithApplicationName(bootstrapper.ApplicationName));
+                }).Configure(x => x.WithApplicationName(bootstrapper.ApplicationName));
         }
     }
 }

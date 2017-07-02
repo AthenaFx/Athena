@@ -15,7 +15,9 @@ namespace Athena.Web.Diagnostics.Endpoints.Home
                 .GetStepsFor(input.Slug, input.Id)
                 .ConfigureAwait(false);
             
-            return new TypeGetResult(input.Slug, input.Id, steps);
+            var settings = context.GetSetting<DiagnosticsWebApplicationSettings>();
+            
+            return new TypeGetResult(input.Slug, input.Id, steps, settings.BaseUrl);
         }
     }
 
@@ -27,11 +29,14 @@ namespace Athena.Web.Diagnostics.Endpoints.Home
 
     public class TypeGetResult
     {
-        public TypeGetResult(string application, string type, IEnumerable<string> steps)
+        private readonly string _baseUrl;
+        
+        public TypeGetResult(string application, string type, IEnumerable<string> steps, string baseUrl)
         {
             Application = application;
             Type = type;
             Steps = steps;
+            _baseUrl = baseUrl;
         }
 
         public string Application { get; }
@@ -45,7 +50,7 @@ namespace Athena.Web.Diagnostics.Endpoints.Home
             foreach (var step in Steps)
             {
                 stepsContentBuilder.Append($@"<li>
-                                                <a href=""/{WebDiagnostics.BaseUrl}/{Application}/data/{Type}/{step}"">
+                                                <a href=""/{_baseUrl}/{Application}/data/{Type}/{step}"">
                                                     {step}
                                                 </a>
                                             </li>");

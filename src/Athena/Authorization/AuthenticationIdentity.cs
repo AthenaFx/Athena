@@ -2,9 +2,9 @@
 
 namespace Athena.Authorization
 {
-    public class Identity
+    public class AuthenticationIdentity
     {
-        public Identity(string name, IReadOnlyDictionary<string, string> data)
+        public AuthenticationIdentity(string name, IReadOnlyDictionary<string, string> data)
         {
             Name = name;
             Data = data;

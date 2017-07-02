@@ -47,11 +47,5 @@ namespace Athena.Diagnostics
                             new DiagnoseInnerBehavior(next, nextItem, conf.DataManager).Invoke));
                 });
         }
-
-        public static PartConfiguration<DiagnosticsConfiguration> StoreDiagnosticsWith(
-            this PartConfiguration<DiagnosticsConfiguration> config, DiagnosticsDataManager dataManager)
-        {
-            return config.UpdateSettings(x => x.UsingDataManager(dataManager));
-        }
     }
 }

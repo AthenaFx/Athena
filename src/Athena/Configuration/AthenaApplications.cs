@@ -42,7 +42,7 @@ namespace Athena.Configuration
                 key = typeof(TPart).AssemblyQualifiedName;
 
             return (PartConfiguration<TPart>) _partConfigurations.GetOrAdd(key,
-                x => new PartConfiguration<TPart>(this, new TPart()));
+                x => new PartConfiguration<TPart>(this, key));
         }
 
         public PartConfiguration<TPart> ConfigureWith<TPart, TEvent>(
@@ -54,9 +54,20 @@ namespace Athena.Configuration
                 key = typeof(TPart).AssemblyQualifiedName;
 
             var partConfiguration = (PartConfiguration<TPart>) _partConfigurations.GetOrAdd(key,
-                x => new PartConfiguration<TPart>(this, new TPart()));
+                x => new PartConfiguration<TPart>(this, key));
 
             partConfiguration.WithSetup(setup, filter);
+
+            return partConfiguration;
+        }
+
+        public PartConfiguration<TPart> ConfigureWith<TPart>(string key = null) where TPart : class, new()
+        {
+            if (string.IsNullOrEmpty(key))
+                key = typeof(TPart).AssemblyQualifiedName;
+            
+            var partConfiguration = (PartConfiguration<TPart>) _partConfigurations.GetOrAdd(key,
+                x => new PartConfiguration<TPart>(this, key));
 
             return partConfiguration;
         }

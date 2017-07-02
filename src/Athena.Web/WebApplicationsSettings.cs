@@ -1,60 +1,44 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 using Athena.Configuration;
 
 namespace Athena.Web
 {
     public class WebApplicationsSettings
     {
-        private readonly ConcurrentDictionary<string, Tuple<int, Func<IDictionary<string, object>, bool>,
-            Func<AppFunctionBuilder, AppFunctionBuilder>>> _webApplications =
-            new ConcurrentDictionary<string, Tuple<int, Func<IDictionary<string, object>, bool>,
-                Func<AppFunctionBuilder, AppFunctionBuilder>>>();
+        private readonly ICollection<Tuple<int, Func<IDictionary<string, object>, bool>,
+            AppFunctionDefinition>> _webApplications =
+            new Collection<Tuple<int, Func<IDictionary<string, object>, bool>,
+                AppFunctionDefinition>>();
 
-        public WebApplicationsSettings AddApplication(string name, 
-            Func<AppFunctionBuilder, AppFunctionBuilder> defaultBuilder, 
-            Func<IDictionary<string, object>, bool> filter = null)
+        public WebApplicationsSettings AddApplication<TSettings>(TSettings settings, 
+            Func<IDictionary<string, object>, TSettings, bool> filter = null) where TSettings : AppFunctionDefinition
         {
             var order = 1;
 
             if (filter == null)
                 order = int.MaxValue;
 
-            filter = filter ?? (x => true);
-            
-            _webApplications[name] = new Tuple<int, Func<IDictionary<string, object>, bool>, 
-                Func<AppFunctionBuilder, AppFunctionBuilder>>(order, filter, defaultBuilder);
+            filter = filter ?? ((x, y) => true);
+
+            if (_webApplications.Any(x => x.Item3.Name == settings.Name && x.Item3.GetType() == typeof(TSettings)))
+            {
+                throw new InvalidOperationException(
+                    $"There is already a application named {settings.Name} of type {typeof(TSettings)}");
+            }
+
+            _webApplications.Add(new Tuple<int, Func<IDictionary<string, object>, bool>, 
+                AppFunctionDefinition>(order, env => filter(env, settings), settings));
 
             return this;
         }
 
-        public WebApplicationsSettings ConfigureApplication(string name,
-            Func<AppFunctionBuilder, AppFunctionBuilder> builder,
-            Func<IDictionary<string, object>, bool> filter = null)
+        internal IReadOnlyCollection<Tuple<int, Func<IDictionary<string, object>, bool>,
+            AppFunctionDefinition>> GetApplications()
         {
-            if(!_webApplications.ContainsKey(name))
-                throw new InvalidOperationException($"There is no application named {name}");
-
-            var currentItem = _webApplications[name];
-            
-            var order = 1;
-
-            if (filter == null)
-                order = int.MaxValue;
-
-            filter = filter ?? (x => true);
-            
-            _webApplications[name] = new Tuple<int, Func<IDictionary<string, object>, bool>, 
-                Func<AppFunctionBuilder, AppFunctionBuilder>>(order, filter, x => builder(currentItem.Item3(x)));
-
-            return this;
-        }
-
-        internal IReadOnlyDictionary<string, Tuple<int, Func<IDictionary<string, object>, bool>,
-            Func<AppFunctionBuilder, AppFunctionBuilder>>> GetApplications()
-        {
-            return _webApplications;
+            return _webApplications.ToList();
         }
     }
 }

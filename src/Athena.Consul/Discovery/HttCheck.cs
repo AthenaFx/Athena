@@ -1,6 +1,5 @@
 using System.Linq;
 using Athena.Configuration;
-using Athena.PubSub;
 using Consul;
 
 namespace Athena.Consul.Discovery
@@ -29,7 +28,7 @@ namespace Athena.Consul.Discovery
                         Status = config.InitialStatus,
                         HTTP = url
                     });
-                }).UpdateSettings(x => x.WithApplicationName(bootstrapper.ApplicationName));
+                }).Configure(x => x.WithApplicationName(bootstrapper.ApplicationName));
         }
     }
 }

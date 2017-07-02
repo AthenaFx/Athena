@@ -15,7 +15,9 @@ namespace Athena.Web.Diagnostics.Endpoints.Home
                 .GetTypesFor(input.Slug)
                 .ConfigureAwait(false);
 
-            return new DetailsGetResult(input.Slug, types);
+            var settings = context.GetSetting<DiagnosticsWebApplicationSettings>();
+
+            return new DetailsGetResult(input.Slug, types, settings.BaseUrl);
         }
     }
 
@@ -26,10 +28,13 @@ namespace Athena.Web.Diagnostics.Endpoints.Home
 
     public class DetailsGetResult
     {
-        public DetailsGetResult(string application, IEnumerable<string> types)
+        private readonly string _baseUrl;
+        
+        public DetailsGetResult(string application, IEnumerable<string> types, string baseUrl)
         {
             Application = application;
             Types = types;
+            _baseUrl = baseUrl;
         }
 
         public string Application { get; }
@@ -42,7 +47,7 @@ namespace Athena.Web.Diagnostics.Endpoints.Home
             foreach (var type in Types)
             {
                 typesContentBuilder.Append($@"<li>
-                                                <a href=""/{WebDiagnostics.BaseUrl}/{Application}/type/{type}"">
+                                                <a href=""/{_baseUrl}/{Application}/type/{type}"">
                                                     {type}
                                                 </a>
                                             </li>");

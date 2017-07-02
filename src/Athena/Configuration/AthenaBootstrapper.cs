@@ -11,6 +11,8 @@ namespace Athena.Configuration
             Func<TEvent, bool> filter = null, string key = null) 
             where TPart : class, new() where TEvent : SetupEvent;
 
+        PartConfiguration<TPart> ConfigureWith<TPart>(string key = null) where TPart : class, new(); 
+            
         AthenaBootstrapper ShutDownWith<TEvent>(Func<TEvent, AthenaContext, Task> shutDown,
             Func<TEvent, bool> filter = null)
             where TEvent : ShutdownEvent;

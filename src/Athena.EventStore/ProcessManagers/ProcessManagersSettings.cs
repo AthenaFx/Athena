@@ -8,14 +8,8 @@ using Athena.Transactions;
 
 namespace Athena.EventStore.ProcessManagers
 {
-    public class ProcessManagersSettings
+    public class ProcessManagersSettings : AppFunctionDefinition
     {
-        private Func<AppFunctionBuilder, AppFunctionBuilder> _builder = builder => builder
-            .Last("HandleTransactions", next => new HandleTransactions(next, 
-                Enumerable.Empty<Transaction>()).Invoke)
-            .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
-            .Last("ExecuteProcessManager", next => new ExecuteProcessManager(next).Invoke);
-        
         private readonly ICollection<ProcessManager> _processManagers = new List<ProcessManager>();
         private EventSerializer _serializer = new JsonEventSerializer();
         private EventStoreConnectionString _connectionString 
@@ -68,23 +62,20 @@ namespace Athena.EventStore.ProcessManagers
             return _processManagers.ToList();
         }
         
-        public ProcessManagersSettings ConfigureApplication(Func<AppFunctionBuilder, AppFunctionBuilder> configure)
-        {
-            var currentBuilder = _builder;
-
-            _builder = (builder => configure(currentBuilder(builder)));
-
-            return this;
-        }
-
-        internal Func<AppFunctionBuilder, AppFunctionBuilder> GetBuilder()
-        {
-            return _builder;
-        }
-
         internal ProcessStateLoader GetStateLoader()
         {
             return _getStateLoader(this);
+        }
+
+        public override string Name { get; } = "esprocessmanager";
+        
+        protected override AppFunctionBuilder DefineDefaultApplication(AppFunctionBuilder builder)
+        {
+            return builder
+                .Last("HandleTransactions", next => new HandleTransactions(next,
+                    Enumerable.Empty<Transaction>()).Invoke)
+                .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
+                .Last("ExecuteProcessManager", next => new ExecuteProcessManager(next).Invoke);
         }
     }
 }

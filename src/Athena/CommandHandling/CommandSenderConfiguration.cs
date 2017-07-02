@@ -11,9 +11,11 @@ using Athena.Transactions;
 
 namespace Athena.CommandHandling
 {
-    public class CommandSenderConfiguration
+    public class CommandSenderConfiguration : AppFunctionDefinition
     {
-        private Func<AppFunctionBuilder, AppFunctionBuilder> _builder = builder =>
+        public override string Name { get; } = "commandhandler";
+        
+        protected override AppFunctionBuilder DefineDefaultApplication(AppFunctionBuilder builder)
         {
             var routers = new List<EnvironmentRouter>
             {
@@ -43,20 +45,6 @@ namespace Athena.CommandHandling
                 .Last("RouteToResource", next => new RouteToResource(next, routers, x =>
                     throw new CommandHandlerNotFoundException(x.Get<object>("command").GetType())).Invoke)
                 .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke);
-        };
-
-        public CommandSenderConfiguration ConfigureApplication(Func<AppFunctionBuilder, AppFunctionBuilder> configure)
-        {
-            var currentBuilder = _builder;
-
-            _builder = (builder => configure(currentBuilder(builder)));
-
-            return this;
-        }
-
-        internal Func<AppFunctionBuilder, AppFunctionBuilder> GetBuilder()
-        {
-            return _builder;
         }
     }
 }
