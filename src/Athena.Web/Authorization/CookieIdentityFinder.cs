@@ -8,16 +8,16 @@ namespace Athena.Web.Authorization
     public class CookieIdentityFinder : IdentityFinder
     {
         private readonly string _cookieName;
-        private readonly Func<string, IDictionary<string, object>, Task<string>> _findIdentityFromCookieValue;
+        private readonly Func<string, IDictionary<string, object>, Task<Identity>> _findIdentityFromCookieValue;
         
         public CookieIdentityFinder(string cookieName, 
-            Func<string, IDictionary<string, object>, Task<string>> findIdentityFromCookieValue)
+            Func<string, IDictionary<string, object>, Task<Identity>> findIdentityFromCookieValue)
         {
             _cookieName = cookieName;
             _findIdentityFromCookieValue = findIdentityFromCookieValue;
         }
 
-        public async Task<string> FindIdentityFor(IDictionary<string, object> environment)
+        public async Task<Identity> FindIdentityFor(IDictionary<string, object> environment)
         {
             var cookie = environment.GetRequest().Cookies[_cookieName];
 

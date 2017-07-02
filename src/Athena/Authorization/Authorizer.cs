@@ -5,6 +5,7 @@ namespace Athena.Authorization
 {
     public interface Authorizer
     {
-        Task<AuthorizationResult> IsAuthorized(IDictionary<string, object> environment, string identity);
+        Task<AuthorizationResult> IsAuthorized(IDictionary<string, object> environment, 
+            Identity identity);
     }
 }

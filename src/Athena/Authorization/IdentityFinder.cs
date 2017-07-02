@@ -5,6 +5,6 @@ namespace Athena.Authorization
 {
     public interface IdentityFinder
     {
-        Task<string> FindIdentityFor(IDictionary<string, object> environment);
+        Task<Identity> FindIdentityFor(IDictionary<string, object> environment);
     }
 }
