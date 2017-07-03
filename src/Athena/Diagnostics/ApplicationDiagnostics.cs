@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using Athena.Configuration;
 using Athena.Logging;
 using Athena.PubSub;
@@ -19,7 +20,7 @@ namespace Athena.Diagnostics
                 var data = evnt
                     .GetType()
                     .GetProperties()
-                    .Where(x => x.CanRead)
+                    .Where(ShouldIncludeInDiagnostics)
                     .ToDictionary(x => x.Name, x => x.GetValue(evnt).ToString());
                 
                 await context.GetSetting<DiagnosticsConfiguration>()
@@ -33,13 +34,23 @@ namespace Athena.Diagnostics
                 var data = evnt
                     .GetType()
                     .GetProperties()
-                    .Where(x => x.CanRead)
+                    .Where(ShouldIncludeInDiagnostics)
                     .ToDictionary(x => x.Name, x => x.GetValue(evnt).ToString());
                 
                 await context.GetSetting<DiagnosticsConfiguration>()
                     .DataManager
                     .AddDiagnostics("Setup", DiagnosticsTypes.Shutdown, "Shutdown",
                     new DiagnosticsData($"{evnt.GetType().Name}-{Guid.NewGuid():N}", data)).ConfigureAwait(false);
+            });
+
+            EventPublishing.Subscribe<ApplicationCompiled>(async (evnt, context) =>
+            {
+                await Task.WhenAll(evnt.Data.Select(item =>
+                    context.GetSetting<DiagnosticsConfiguration>()
+                        .DataManager
+                        .AddDiagnostics("Applications", DiagnosticsTypes.Bootstrapping, evnt.Name,
+                            new DiagnosticsData(item.Key, item.Value))))
+                    .ConfigureAwait(false);
             });
 
             return bootstrapper
@@ -51,6 +62,18 @@ namespace Athena.Diagnostics
                         builder => builder.WrapAllWith((next, nextItem) =>
                             new DiagnoseInnerBehavior(next, nextItem, conf.DataManager).Invoke));
                 });
+        }
+
+        private static bool ShouldIncludeInDiagnostics(PropertyInfo propertyInfo)
+        {
+            var propertyTypeInfo = propertyInfo.PropertyType.GetTypeInfo();
+
+            return propertyInfo.CanRead
+                   && (propertyTypeInfo.IsPrimitive 
+                       || propertyTypeInfo.IsEnum 
+                       || propertyInfo.PropertyType == typeof(string)
+                       || propertyInfo.PropertyType == typeof(DateTime)
+                       || propertyInfo.PropertyType == typeof(TimeSpan));
         }
     }
 }

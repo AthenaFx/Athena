@@ -15,9 +15,9 @@ namespace Athena.Logging
             return bootstrapper;
         }
 
-        public static AthenaBootstrapper LogToConsole(this AthenaBootstrapper bootstrapper, LogLevel level)
+        public static AthenaBootstrapper LogToConsole(this AthenaBootstrapper bootstrapper, LogLevel level = null)
         {
-            return LogWith(bootstrapper, new ConsoleLogWriter(level));
+            return LogWith(bootstrapper, new ConsoleLogWriter(level ?? LogLevel.Info));
         }
 
         public static void Write(LogLevel level, string message, Exception exception = null)

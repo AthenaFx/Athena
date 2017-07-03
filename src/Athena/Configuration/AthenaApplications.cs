@@ -10,6 +10,8 @@ using Athena.PubSub;
 
 namespace Athena.Configuration
 {
+    using AppFunc = Func<IDictionary<string, object>, Task>;
+    
     public sealed class AthenaApplications : AthenaBootstrapper, AthenaSetupContext
     {
         private readonly Stopwatch _timer;
@@ -163,7 +165,11 @@ namespace Athena.Configuration
 
             await Done(new BeforeApplicationsCompilation()).ConfigureAwait(false);
 
-            var applications = _applicationBuilders.ToDictionary(x => x.Key, x => x.Value.Compile());
+            var compilationResults = await Task.WhenAll(_applicationBuilders
+                    .Select(x => CompileApplication(x.Key, x.Value)))
+                .ConfigureAwait(false);
+
+            var applications = compilationResults.ToDictionary(x => x.Item1, x => x.Item2);
 
             await Done(new ApplicationsCompiled()).ConfigureAwait(false);
 
@@ -178,6 +184,19 @@ namespace Athena.Configuration
             return context;
         }
 
+        private async Task<Tuple<string, AppFunc>> CompileApplication(string name, AppFunctionBuilder builder)
+        {
+            var timer = Stopwatch.StartNew();
+            
+            var result = builder.Compile();
+            
+            timer.Stop();
+
+            await Done(new ApplicationCompiled(name, result.Item2, timer.Elapsed));
+            
+            return new Tuple<string, AppFunc>(name, result.Item1);
+        }
+        
         public static AthenaBootstrapper From(string environment, params Assembly[] applicationAssemblies)
         {
             return From(environment, Assembly.GetEntryAssembly().GetName().Name.Replace(".", ""),

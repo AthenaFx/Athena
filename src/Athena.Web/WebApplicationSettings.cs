@@ -151,7 +151,7 @@ namespace Athena.Web
                     next => new HandleTransactions(next, _transactions.ToList()).Invoke)
                 .Last("SupplyMetaData", next => new SupplyMetaData(next, _metaDataSuppliers.ToList()).Invoke)
                 .Last("RouteToResource",
-                    next => new RouteToResource(next, routers).Invoke)
+                    next => new RouteToResource(next, routers).Invoke, () => routes.GetDiagnosticsData())
                 .Last("EnsureEndpointExists", next => new EnsureEndpointExists(next, routeCheckers, async environment => 
                 {
                     var context = environment.GetAthenaContext();

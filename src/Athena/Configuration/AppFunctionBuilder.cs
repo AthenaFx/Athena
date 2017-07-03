@@ -10,8 +10,10 @@ namespace Athena.Configuration
 
     public class AppFunctionBuilder
     {
-        private readonly IDictionary<string, Func<AppFunc, AppFunc>> _appFunctionFactories
-            = new ConcurrentDictionary<string, Func<AppFunc, AppFunc>>();
+        private readonly IDictionary<string, Tuple<Func<AppFunc, AppFunc>, Func<IReadOnlyDictionary<string, string>>>>
+            _appFunctionFactories
+                = new ConcurrentDictionary<string,
+                    Tuple<Func<AppFunc, AppFunc>, Func<IReadOnlyDictionary<string, string>>>>();
 
         private readonly LinkedList<string> _chain = new LinkedList<string>();
         private readonly ICollection<Func<AppFunc, string, AppFunc>> _wrappers 
@@ -24,50 +26,66 @@ namespace Athena.Configuration
 
         public AthenaBootstrapper Bootstrapper { get; }
 
-        public AppFunctionBuilder Replace(string item, string name, Func<AppFunc, AppFunc> builder)
+        public AppFunctionBuilder Replace(string item, string name, Func<AppFunc, AppFunc> builder, 
+            Func<IReadOnlyDictionary<string, string>> getDiagnosticsData = null)
         {
-            _appFunctionFactories[name] = builder;
+            _appFunctionFactories[name] =
+                new Tuple<Func<AppFunc, AppFunc>, Func<IReadOnlyDictionary<string, string>>>(builder,
+                    getDiagnosticsData ?? (() => new Dictionary<string, string>()));
 
             _chain.Find(item).Value = name;
 
             return this;
         }
         
-        public AppFunctionBuilder Replace(string item, Func<AppFunc, AppFunc> builder)
+        public AppFunctionBuilder Replace(string item, Func<AppFunc, AppFunc> builder,
+            Func<IReadOnlyDictionary<string, string>> getDiagnosticsData = null)
         {
-            return Replace(item, item, builder);
+            return Replace(item, item, builder, getDiagnosticsData);
         }
 
-        public AppFunctionBuilder Before(string item, string name, Func<AppFunc, AppFunc> builder)
+        public AppFunctionBuilder Before(string item, string name, Func<AppFunc, AppFunc> builder,
+            Func<IReadOnlyDictionary<string, string>> getDiagnosticsData = null)
         {
-            _appFunctionFactories[name] = builder;
+            _appFunctionFactories[name] =
+                new Tuple<Func<AppFunc, AppFunc>, Func<IReadOnlyDictionary<string, string>>>(builder,
+                    getDiagnosticsData ?? (() => new Dictionary<string, string>()));
 
             _chain.AddBefore(_chain.Find(item), name);
 
             return this;
         }
 
-        public AppFunctionBuilder After(string item, string name, Func<AppFunc, AppFunc> builder)
+        public AppFunctionBuilder After(string item, string name, Func<AppFunc, AppFunc> builder,
+            Func<IReadOnlyDictionary<string, string>> getDiagnosticsData = null)
         {
-            _appFunctionFactories[name] = builder;
+            _appFunctionFactories[name] =
+                new Tuple<Func<AppFunc, AppFunc>, Func<IReadOnlyDictionary<string, string>>>(builder,
+                    getDiagnosticsData ?? (() => new Dictionary<string, string>()));
 
             _chain.AddAfter(_chain.Find(item), name);
 
             return this;
         }
 
-        public AppFunctionBuilder First(string item, Func<AppFunc, AppFunc> builder)
+        public AppFunctionBuilder First(string item, Func<AppFunc, AppFunc> builder,
+            Func<IReadOnlyDictionary<string, string>> getDiagnosticsData = null)
         {
-            _appFunctionFactories[item] = builder;
+            _appFunctionFactories[item] =
+                new Tuple<Func<AppFunc, AppFunc>, Func<IReadOnlyDictionary<string, string>>>(builder,
+                    getDiagnosticsData ?? (() => new Dictionary<string, string>()));
 
             _chain.AddFirst(item);
 
             return this;
         }
 
-        public AppFunctionBuilder Last(string item, Func<AppFunc, AppFunc> builder)
+        public AppFunctionBuilder Last(string item, Func<AppFunc, AppFunc> builder,
+            Func<IReadOnlyDictionary<string, string>> getDiagnosticsData = null)
         {
-            _appFunctionFactories[item] = builder;
+            _appFunctionFactories[item] =
+                new Tuple<Func<AppFunc, AppFunc>, Func<IReadOnlyDictionary<string, string>>>(builder,
+                    getDiagnosticsData ?? (() => new Dictionary<string, string>()));
 
             _chain.AddLast(item);
 
@@ -97,9 +115,10 @@ namespace Athena.Configuration
             return this;
         }
 
-        public AppFunc Compile()
+        public Tuple<AppFunc, IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>> Compile()
         {
             var result = new List<Func<AppFunc, AppFunc>>();
+            var diagnosticsData = new Dictionary<string, IReadOnlyDictionary<string, string>>();
 
             foreach (var item in _chain)
             {
@@ -107,15 +126,25 @@ namespace Athena.Configuration
                 
                 result.AddRange(_wrappers
                     .Select<Func<AppFunc, string, AppFunc>, Func<AppFunc, AppFunc>>(x => (y => x(y, currentItemName))));
+
+                var row = _appFunctionFactories[item];
                 
-                result.Add(_appFunctionFactories[item]);
+                result.Add(row.Item1);
+
+                diagnosticsData[item] = row.Item2();
             }
 
             result.Reverse();
-
+            diagnosticsData = diagnosticsData
+                .Reverse()
+                .ToDictionary(x => x.Key, x => x.Value);
+            
             Task LastFunc(IDictionary<string, object> x) => Task.CompletedTask;
 
-            return result.Aggregate((AppFunc) LastFunc, (current, item) => item(current));
+            var application = result.Aggregate((AppFunc) LastFunc, (current, item) => item(current));
+            
+            return new Tuple<AppFunc, IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>>
+                (application, diagnosticsData);
         }
     }
 }

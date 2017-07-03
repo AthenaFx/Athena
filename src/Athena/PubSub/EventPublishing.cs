@@ -37,6 +37,9 @@ namespace Athena.PubSub
         public static EventSubscription Subscribe<TEvent>(Func<TEvent, SettingsContext, Task> subscription, 
             string id = null)
         {
+            if(string.IsNullOrEmpty(id))
+                id = Guid.NewGuid().ToString();
+            
             return _publisher.Subscribe(subscription, id);
         }
 

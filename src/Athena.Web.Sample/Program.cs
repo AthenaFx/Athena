@@ -3,11 +3,13 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Athena.Configuration;
 using Athena.Diagnostics;
+using Athena.Logging;
 using Athena.Web.Diagnostics;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Owin;
 using Microsoft.Extensions.Logging;
+using LogLevel = Athena.Logging.LogLevel;
 
 namespace Athena.Web.Sample
 {
@@ -19,6 +21,7 @@ namespace Athena.Web.Sample
         {
             var athenaContext = await AthenaApplications
                 .From("local", typeof(Program).GetTypeInfo().Assembly)
+                .LogToConsole(LogLevel.Debug)
                 .UsingWebApplication()
                 .EnableDiagnostics()
                 .WithWebUi()
