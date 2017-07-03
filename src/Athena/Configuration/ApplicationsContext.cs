@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -14,22 +15,31 @@ namespace Athena.Configuration
     {
         private readonly IReadOnlyDictionary<string, AppFunc> _applications;
 
-        private readonly IReadOnlyCollection<Tuple<Type, Func<object, bool>, Func<object, AthenaContext, Task>>>
-            _shutdownHandlers;
+        private IReadOnlyCollection<Func<AthenaContext, Task>> _shutdownHandlers;
         
-        private readonly IReadOnlyDictionary<string, object> _settings;
+        private IReadOnlyDictionary<string, object> _settings;
         
-        public ApplicationsContext(IReadOnlyCollection<Assembly> applicationAssemblies, string applicationName, 
-            string environment, IReadOnlyDictionary<string, AppFunc> applications, 
-            IReadOnlyCollection<Tuple<Type, Func<object, bool>, Func<object, AthenaContext, Task>>> shutdownHandlers, 
-            IReadOnlyDictionary<string, object> settings)
+        private ApplicationsContext(IReadOnlyCollection<Assembly> applicationAssemblies, string applicationName, 
+            string environment, IReadOnlyDictionary<string, AppFunc> applications)
         {
             ApplicationAssemblies = applicationAssemblies;
             ApplicationName = applicationName;
             _applications = applications;
-            _shutdownHandlers = shutdownHandlers;
-            _settings = settings;
             Environment = environment;
+        }
+
+        public static async Task<ApplicationsContext> From(IReadOnlyCollection<Assembly> applicationAssemblies, 
+            string applicationName, string environment, IReadOnlyDictionary<string, AppFunc> applications, 
+            IReadOnlyDictionary<string, PartConfiguration> configurations)
+        {
+            var context = new ApplicationsContext(applicationAssemblies, applicationName, environment, applications);
+
+            context._shutdownHandlers = await Task.WhenAll(configurations
+                .Select(x => x.Value.RunStartup(context))).ConfigureAwait(false);
+
+            context._settings = configurations.ToDictionary(x => x.Key, x => x.Value.GetPart());
+
+            return context;
         }
 
         public IReadOnlyCollection<Assembly> ApplicationAssemblies { get; }
@@ -49,34 +59,32 @@ namespace Athena.Configuration
         public async Task Execute(string application, IDictionary<string, object> environment)
         {
             Logger.Write(LogLevel.Debug, $"Executing application {application}");
-            
+
             using (environment.EnterApplication(this, application))
+            {
+                var timer = Stopwatch.StartNew();
+                
                 await _applications[application](environment).ConfigureAwait(false);
+                
+                timer.Stop();
+
+                await EventPublishing.Publish(new ApplicationExecutedRequest(application,
+                    environment.GetRequestId(), timer.Elapsed, DateTime.UtcNow))
+                    .ConfigureAwait(false);
+            }
+            
+            Logger.Write(LogLevel.Debug, $"Application executed {application}");
         }
 
         public async Task ShutDown()
         {
-            Logger.Write(LogLevel.Debug, $"Starting shutdown of application");
+            Logger.Write(LogLevel.Debug, "Starting shutdown of application");
             
-            await Done(new ShutdownStarted(ApplicationName, Environment));
-            
-            Logger.Write(LogLevel.Debug, $"Applications shut down");
-        }
-        
-        private async Task Done(ShutdownEvent evnt)
-        {
-            Logger.Write(LogLevel.Debug, $"{evnt} done");
-            
-            foreach (var type in evnt.GetType().GetParentTypesFor())
-            {
-                var subscriptions = _shutdownHandlers.Where(x => x.Item1 == type && x.Item2(evnt)).ToList();
+            await EventPublishing.Publish(new ShutdownStarted(ApplicationName, Environment));
 
-                await Task.WhenAll(subscriptions
-                    .Select(x => x.Item3(evnt, this)))
-                    .ConfigureAwait(false);
-            }
-
-            await this.Publish(evnt).ConfigureAwait(false);
+            await Task.WhenAll(_shutdownHandlers.Select(x => x(this))).ConfigureAwait(false);
+            
+            Logger.Write(LogLevel.Debug, "Applications shut down");
         }
     }
 }

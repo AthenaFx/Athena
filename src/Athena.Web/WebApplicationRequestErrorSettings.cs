@@ -22,9 +22,10 @@ namespace Athena.Web
             };
             
             return builder
-                .Last("UseCorrectOutputParser", 
-                    next => new UseCorrectOutputParser(next, mediaTypeFinders, outputParsers).Invoke)
-                .Last("SetStaticOutputResult", 
+                .First("UseCorrectOutputParser", 
+                    next => new UseCorrectOutputParser(next, mediaTypeFinders, outputParsers).Invoke,
+                    () => outputParsers.GetDiagnosticsData())
+                .ContinueWith("SetStaticOutputResult", 
                     next => new SetStaticOutputResult(next, 
                         x => new ExceptionResult(x.Get<Exception>("exception"))).Invoke)
                 .Last("WriteOutput", next => new WriteOutput(next, new StaticStatusCodeFinder(500)).Invoke);

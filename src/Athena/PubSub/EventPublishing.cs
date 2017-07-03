@@ -17,11 +17,11 @@ namespace Athena.PubSub
             return bootstrapper;
         }
 
-        public static Task Publish(this SettingsContext context, object evnt)
+        public static Task Publish(object evnt)
         {
             Logger.Write(LogLevel.Debug, $"Publishing event {evnt}");
             
-            return _publisher.Publish(evnt, context);
+            return _publisher.Publish(evnt);
         }
 
         public static EventSubscription Subscribe<TEvent>(Func<TEvent, Task> subscription, string id = null)
@@ -31,18 +31,9 @@ namespace Athena.PubSub
             
             Logger.Write(LogLevel.Debug, $"Subscribing to event of type {typeof(TEvent)} (id: {id})");
             
-            return _publisher.Subscribe<TEvent>((evnt, context) => subscription(evnt), id);
-        }
-        
-        public static EventSubscription Subscribe<TEvent>(Func<TEvent, SettingsContext, Task> subscription, 
-            string id = null)
-        {
-            if(string.IsNullOrEmpty(id))
-                id = Guid.NewGuid().ToString();
-            
             return _publisher.Subscribe(subscription, id);
         }
-
+        
         public static void UnSubscribe(string id)
         {
             Logger.Write(LogLevel.Debug, $"Unsubscribing {id}");

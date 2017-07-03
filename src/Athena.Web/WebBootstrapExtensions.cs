@@ -14,21 +14,25 @@ namespace Athena.Web
         internal static PartConfiguration<WebApplicationsRouterSettings> UsingWeb(this AthenaBootstrapper bootstrapper)
         {
             if (_hasConfiguredWeb)
-                return bootstrapper.Configure<WebApplicationsRouterSettings>();
+                return bootstrapper.Part<WebApplicationsRouterSettings>();
             
             Logger.Write(LogLevel.Debug, $"Enabling web applications");
             
             _hasConfiguredWeb = true;
                 
             return bootstrapper
-                .ConfigureWith<WebApplicationsRouterSettings>((conf, context) =>
+                .Part<WebApplicationsRouterSettings>()
+                .OnSetup((conf, context) =>
                 {
-                    var applications = conf.GetApplications();
+                    var applications = conf.GetApplications().OrderBy(x => x.Item1).ToList();
 
                     Logger.Write(LogLevel.Debug, $"Configuring {applications.Count} web applications");
                     
                     foreach (var application in applications)
                         context.DefineApplication(application.Item3.Name, application.Item3.GetApplicationBuilder());
+
+                    var diagnosticsData = applications
+                        .ToDictionary(x => x.Item3.Name, x => $"/{x.Item3.BaseUrl}");
                         
                     context.DefineApplication("web", builder => builder
                         .First("RunPartialApplication", next => new RunPartialApplication(next, env =>
@@ -38,7 +42,7 @@ namespace Athena.Web
                                 .Where(x => x.Item2(env))
                                 .Select(x => x.Item3.Name)
                                 .FirstOrDefault();
-                        }).Invoke));
+                        }).Invoke, () => diagnosticsData));
                         
                     return Task.CompletedTask;
                 });
@@ -53,49 +57,51 @@ namespace Athena.Web
             
             var appConfiguration = bootstrapper
                 .UsingWeb()
-                .Child<WebApplicationSettings>((webSettings, webAppSettings, _) =>
+                .Child<WebApplicationSettings>(key)
+                .ConfigureParentWith((webSettings, webAppSettings, _) =>
                     webSettings.AddApplication(webAppSettings,
                         (env, settings) => string.IsNullOrEmpty(settings.BaseUrl)
-                                           || env.GetRequest().Uri.LocalPath.StartsWith($"/{settings.BaseUrl}")), key)
+                                           || env.GetRequest().Uri.LocalPath.StartsWith($"/{settings.BaseUrl}")))
                 .Configure(x => x.WithName(name));
 
-            appConfiguration.Child<WebApplicationRequestErrorSettings>(async (webAppSettings, errorSettings, context) =>
-            {
-                await context.DefineApplication($"{webAppSettings.Name}_error", errorSettings.GetApplicationBuilder())
-                    .ConfigureAwait(false);
+            appConfiguration.Child<WebApplicationRequestErrorSettings>($"{key}_error")
+                .ConfigureParentWith(async (webAppSettings, errorSettings, context) =>
+                {
+                    await context.DefineApplication($"{webAppSettings.Name}_error", errorSettings.GetApplicationBuilder())
+                        .ConfigureAwait(false);
 
-                return webAppSettings;
-            }, $"{key}_error");
+                    return webAppSettings;
+                });
             
-            appConfiguration.Child<WebApplicationRequestNotFoundSettings>(
-                async (webAppSettings, notFoundSettings, context) =>
+            appConfiguration.Child<WebApplicationRequestNotFoundSettings>($"{key}_missing")
+                .ConfigureParentWith(async (webAppSettings, notFoundSettings, context) =>
                 {
                     await context
                         .DefineApplication($"{webAppSettings.Name}_missing", notFoundSettings.GetApplicationBuilder())
                         .ConfigureAwait(false);
 
                     return webAppSettings;
-                }, $"{key}_missing");
+                });
             
-            appConfiguration.Child<WebApplicationRequestUnAuthorizedSettings>(
-                async (webAppSettings, notFoundSettings, context) =>
+            appConfiguration.Child<WebApplicationRequestUnAuthorizedSettings>($"{key}_unauthorized")
+                .ConfigureParentWith(async (webAppSettings, notFoundSettings, context) =>
                 {
                     await context
                         .DefineApplication($"{webAppSettings.Name}_unauthorized", notFoundSettings.GetApplicationBuilder())
                         .ConfigureAwait(false);
 
                     return webAppSettings;
-                }, $"{key}_unauthorized");
+                });
             
-            appConfiguration.Child<WebApplicationRequestValidationErrorSettings>(
-                async (webAppSettings, notFoundSettings, context) =>
+            appConfiguration.Child<WebApplicationRequestValidationErrorSettings>($"{key}_invalid")
+                .ConfigureParentWith(async (webAppSettings, notFoundSettings, context) =>
                 {
                     await context
                         .DefineApplication($"{webAppSettings.Name}_invalid", notFoundSettings.GetApplicationBuilder())
                         .ConfigureAwait(false);
 
                     return webAppSettings;
-                }, $"{key}_invalid");
+                });
             
             return appConfiguration;
         }

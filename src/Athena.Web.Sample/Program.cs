@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
+using Athena.CommandHandling;
 using Athena.Configuration;
 using Athena.Diagnostics;
 using Athena.Logging;
@@ -23,6 +24,7 @@ namespace Athena.Web.Sample
                 .From("local", typeof(Program).GetTypeInfo().Assembly)
                 .LogToConsole(LogLevel.Debug)
                 .UsingWebApplication()
+                .EnableCommandSender()
                 .EnableDiagnostics()
                 .WithWebUi()
                 .Build();
@@ -39,7 +41,7 @@ namespace Athena.Web.Sample
 
             host.Run();
 
-            athenaContext.ShutDown().Wait();
+            await athenaContext.ShutDown();
         }
     }
 }

@@ -5,11 +5,11 @@ namespace Athena.PubSub
 {
     public class EventSubscription : IDisposable
     {
-        private readonly Func<object, SettingsContext, Task> _handle;
+        private readonly Func<object, Task> _handle;
         private readonly Action<string> _unsubscribe;
         private bool _isDisposed;
         
-        public EventSubscription(Func<object, SettingsContext, Task> handle, Action<string> unsubscribe, string id, 
+        public EventSubscription(Func<object, Task> handle, Action<string> unsubscribe, string id, 
             Type subscribedTo)
         {
             _handle = handle;
@@ -18,9 +18,9 @@ namespace Athena.PubSub
             SubscribedTo = subscribedTo;
         }
 
-        internal Task Handle(object evnt, SettingsContext context)
+        internal Task Handle(object evnt)
         {
-            return _handle(evnt, context);
+            return _handle(evnt);
         }
 
         public string Id { get; }

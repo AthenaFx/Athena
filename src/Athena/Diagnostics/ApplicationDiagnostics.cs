@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -13,57 +14,63 @@ namespace Athena.Diagnostics
         public static PartConfiguration<DiagnosticsConfiguration> EnableDiagnostics(
             this AthenaBootstrapper bootstrapper)
         {
-            Logger.Write(LogLevel.Debug, $"Enabling diagnostics");
-            
-            EventPublishing.Subscribe<SetupEvent>(async (evnt, context) =>
-            {
-                var data = evnt
-                    .GetType()
-                    .GetProperties()
-                    .Where(ShouldIncludeInDiagnostics)
-                    .ToDictionary(x => x.Name, x => x.GetValue(evnt).ToString());
-                
-                await context.GetSetting<DiagnosticsConfiguration>()
-                    .DataManager
-                    .AddDiagnostics("Setup", DiagnosticsTypes.Bootstrapping, "Init",
-                    new DiagnosticsData($"{evnt.GetType().Name}-{Guid.NewGuid():N}", data)).ConfigureAwait(false);
-            });
-
-            EventPublishing.Subscribe<ShutdownEvent>(async (evnt, context) =>
-            {
-                var data = evnt
-                    .GetType()
-                    .GetProperties()
-                    .Where(ShouldIncludeInDiagnostics)
-                    .ToDictionary(x => x.Name, x => x.GetValue(evnt).ToString());
-                
-                await context.GetSetting<DiagnosticsConfiguration>()
-                    .DataManager
-                    .AddDiagnostics("Setup", DiagnosticsTypes.Shutdown, "Shutdown",
-                    new DiagnosticsData($"{evnt.GetType().Name}-{Guid.NewGuid():N}", data)).ConfigureAwait(false);
-            });
-
-            EventPublishing.Subscribe<ApplicationCompiled>(async (evnt, context) =>
-            {
-                await Task.WhenAll(evnt.Data.Select(item =>
-                    context.GetSetting<DiagnosticsConfiguration>()
-                        .DataManager
-                        .AddDiagnostics("Applications", DiagnosticsTypes.Bootstrapping, evnt.Name,
-                            new DiagnosticsData(item.Key, item.Value))))
-                    .ConfigureAwait(false);
-            });
+            Logger.Write(LogLevel.Debug, "Enabling diagnostics");
 
             return bootstrapper
-                .ConfigureWith<DiagnosticsConfiguration, ApplicationDefined>((conf, evnt, context) =>
+                .Part<DiagnosticsConfiguration>()
+                .On<ApplicationDefined>((conf, evnt, context) =>
                 {
-                    Logger.Write(LogLevel.Debug, $"Configuring diagnostics");
+                    Logger.Write(LogLevel.Debug, "Configuring diagnostics");
                     
                     return context.UpdateApplication(evnt.Name,
                         builder => builder.WrapAllWith((next, nextItem) =>
                             new DiagnoseInnerBehavior(next, nextItem, conf.DataManager).Invoke));
+                }).On<ApplicationCompiled>(async (conf, evnt, context) =>
+                {
+                    await Task.WhenAll(evnt.Data.Select(item =>
+                            conf
+                                .DataManager
+                                .AddDiagnostics(evnt.Name, "Configuration", "Definition",
+                                    new DiagnosticsData(item.Key, item.Value))))
+                        .ConfigureAwait(false);
+                }).On<SetupEvent>(async (conf, evnt, context) =>
+                {
+                    var data = evnt
+                        .GetType()
+                        .GetProperties()
+                        .Where(ShouldIncludeInDiagnostics)
+                        .ToDictionary(x => x.Name, x => x.GetValue(evnt).ToString());
+                
+                    await conf
+                        .DataManager
+                        .AddDiagnostics(context.ApplicationName, "Lifecycle", "Startup",
+                            new DiagnosticsData($"{evnt.GetType().Name}-{Guid.NewGuid():N}", data))
+                        .ConfigureAwait(false);
+                }).OnStartup((conf, context) =>
+                {
+                    EventPublishing.Subscribe<object>(async evnt =>
+                    {
+                        var data = evnt
+                            .GetType()
+                            .GetProperties()
+                            .Where(ShouldIncludeInDiagnostics)
+                            .ToDictionary(x => x.Name, x => x.GetValue(evnt).ToString());
+                
+                        await conf
+                            .DataManager
+                            .AddDiagnostics(context.ApplicationName, "Lifecycle", "Runtime",
+                                new DiagnosticsData($"{evnt.GetType().Name}-{Guid.NewGuid():N}", data))
+                            .ConfigureAwait(false);
+                    });
                 });
         }
 
+        public static DiagnosticsContext OpenDiagnosticsTimerContext(this DiagnosticsDataManager dataManager, 
+            IDictionary<string, object> environment, string step, string name)
+        {
+            return new TimerDiagnosticsContext(dataManager, environment, step, name);
+        }
+        
         private static bool ShouldIncludeInDiagnostics(PropertyInfo propertyInfo)
         {
             var propertyTypeInfo = propertyInfo.PropertyType.GetTypeInfo();
@@ -75,5 +82,7 @@ namespace Athena.Diagnostics
                        || propertyInfo.PropertyType == typeof(DateTime)
                        || propertyInfo.PropertyType == typeof(TimeSpan));
         }
+        
+        
     }
 }

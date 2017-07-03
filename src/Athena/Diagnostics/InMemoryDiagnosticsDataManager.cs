@@ -8,9 +8,9 @@ namespace Athena.Diagnostics
     public class InMemoryDiagnosticsDataManager : DiagnosticsDataManager
     {
         private static readonly
-            IDictionary<string, ConcurrentDictionary<string, LurchTable<string, ConcurrentBag<DiagnosticsData>>>> Data =
+            IDictionary<string, ConcurrentDictionary<string, LurchTable<string, LurchList<DiagnosticsData>>>> Data =
                 new ConcurrentDictionary<string,
-                    ConcurrentDictionary<string, LurchTable<string, ConcurrentBag<DiagnosticsData>>>>();
+                    ConcurrentDictionary<string, LurchTable<string, LurchList<DiagnosticsData>>>>();
         
         public Task AddDiagnostics(string application, string type, string step, DiagnosticsData data)
         {
@@ -19,15 +19,15 @@ namespace Athena.Diagnostics
             var loweredStep = (step ?? "").ToLower();
 
             if (!Data.ContainsKey(loweredApplication))
-                Data[loweredApplication] = new ConcurrentDictionary<string, LurchTable<string, ConcurrentBag<DiagnosticsData>>>();
+                Data[loweredApplication] = new ConcurrentDictionary<string, LurchTable<string, LurchList<DiagnosticsData>>>();
 
             if (!Data[loweredApplication].ContainsKey(loweredType))
-                Data[loweredApplication][loweredType] = new LurchTable<string, ConcurrentBag<DiagnosticsData>>(50);
+                Data[loweredApplication][loweredType] = new LurchTable<string, LurchList<DiagnosticsData>>(200);
 
             if (!Data[loweredApplication][loweredType].ContainsKey(loweredStep))
-                Data[loweredApplication][loweredType][loweredStep] = new ConcurrentBag<DiagnosticsData>();
+                Data[loweredApplication][loweredType][loweredStep] = new LurchList<DiagnosticsData>(50);
 
-            Data[loweredApplication][loweredType][loweredStep].Add(data);
+            Data[loweredApplication][loweredType][loweredStep].AddFirst(data);
 
             return Task.CompletedTask;
         }
@@ -41,7 +41,7 @@ namespace Athena.Diagnostics
         {
             var loweredApplication = (application ?? "").ToLower();
 
-            ConcurrentDictionary<string, LurchTable<string, ConcurrentBag<DiagnosticsData>>> categoryData;
+            ConcurrentDictionary<string, LurchTable<string, LurchList<DiagnosticsData>>> categoryData;
 
             return Task.FromResult(!Data.TryGetValue(loweredApplication, out categoryData) 
                 ? Enumerable.Empty<string>() 
@@ -53,12 +53,12 @@ namespace Athena.Diagnostics
             var loweredApplication = (application ?? "").ToLower();
             var loweredType = (type ?? "").ToLower();
 
-            ConcurrentDictionary<string, LurchTable<string, ConcurrentBag<DiagnosticsData>>> categoryData;
+            ConcurrentDictionary<string, LurchTable<string, LurchList<DiagnosticsData>>> categoryData;
 
             if (!Data.TryGetValue(loweredApplication, out categoryData))
                 return Task.FromResult(Enumerable.Empty<string>());
 
-            LurchTable<string, ConcurrentBag<DiagnosticsData>> typeData;
+            LurchTable<string, LurchList<DiagnosticsData>> typeData;
 
             return Task.FromResult(!categoryData.TryGetValue(loweredType, out typeData) 
                 ? Enumerable.Empty<string>() 
@@ -72,13 +72,13 @@ namespace Athena.Diagnostics
             var loweredType = (type ?? "").ToLower();
             var loweredStep = (step ?? "").ToLower();
 
-            ConcurrentDictionary<string, LurchTable<string, ConcurrentBag<DiagnosticsData>>> categoryData;
+            ConcurrentDictionary<string, LurchTable<string, LurchList<DiagnosticsData>>> categoryData;
 
             if (!Data.TryGetValue(loweredApplication, out categoryData))
                 return Task.FromResult<IReadOnlyDictionary<string, IEnumerable<KeyValuePair<string, string>>>>
                     (new Dictionary<string, IEnumerable<KeyValuePair<string, string>>>());
 
-            LurchTable<string, ConcurrentBag<DiagnosticsData>> typeData;
+            LurchTable<string, LurchList<DiagnosticsData>> typeData;
 
             if (!categoryData.TryGetValue(loweredType, out typeData))
                 return Task.FromResult<IReadOnlyDictionary<string, IEnumerable<KeyValuePair<string, string>>>>

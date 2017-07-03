@@ -1,22 +1,17 @@
-using System;
+using System.Collections.Generic;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Athena.Configuration
 {
-    public interface AthenaBootstrapper : SettingsContext
+    public interface AthenaBootstrapper
     {
-        PartConfiguration<TPart> Configure<TPart>(string key = null) where TPart : class, new();
+        string ApplicationName { get; }
+        string Environment { get; }
+        IReadOnlyCollection<Assembly> ApplicationAssemblies { get; }
         
-        PartConfiguration<TPart> ConfigureWith<TPart, TEvent>(Func<TPart, TEvent, AthenaSetupContext, Task> setup,
-            Func<TEvent, bool> filter = null, string key = null) 
-            where TPart : class, new() where TEvent : SetupEvent;
+        PartConfiguration<TPart> Part<TPart>(string key = null) where TPart : class, new();
 
-        PartConfiguration<TPart> ConfigureWith<TPart>(string key = null) where TPart : class, new(); 
-            
-        AthenaBootstrapper ShutDownWith<TEvent>(Func<TEvent, AthenaContext, Task> shutDown,
-            Func<TEvent, bool> filter = null)
-            where TEvent : ShutdownEvent;
-        
         Task<AthenaContext> Build();
     }
 }

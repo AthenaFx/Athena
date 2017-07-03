@@ -13,6 +13,5 @@ namespace Athena.Configuration
         Task DefineApplication(string name, Func<AppFunctionBuilder, AppFunctionBuilder> builder);
         Task UpdateApplication(string name, Func<AppFunctionBuilder, AppFunctionBuilder> builder);
         IReadOnlyCollection<string> GetDefinedApplications();
-        Task Done(SetupEvent evnt);
     }
 }

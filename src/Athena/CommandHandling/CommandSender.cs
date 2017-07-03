@@ -29,15 +29,16 @@ namespace Athena.CommandHandling
             this AthenaBootstrapper bootstrapper)
         {
             Logger.Write(LogLevel.Debug, $"Enabling command sender");
-            
-            return bootstrapper.ConfigureWith<CommandSenderConfiguration>((conf, context) =>
-            {
-                Logger.Write(LogLevel.Debug, $"Configuring command sender");
-                
-                context.DefineApplication(conf.Name, conf.GetApplicationBuilder());
-                
-                return Task.CompletedTask;
-            });
+
+            return bootstrapper.Part<CommandSenderConfiguration>()
+                .OnSetup((conf, context) =>
+                {
+                    Logger.Write(LogLevel.Debug, $"Configuring command sender");
+
+                    context.DefineApplication(conf.Name, conf.GetApplicationBuilder());
+
+                    return Task.CompletedTask;
+                });
         }
     }
 }

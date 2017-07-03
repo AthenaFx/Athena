@@ -23,7 +23,8 @@ namespace Athena.EventStore.ProcessManagers
             {
                 await context
                     .ProcessManager
-                    .Handle(context.Event, environment, context.StateLoader)
+                    .Handle(context.Event, environment, context.StateLoader,
+                        environment.GetAthenaContext())
                     .ConfigureAwait(false);
             }
 

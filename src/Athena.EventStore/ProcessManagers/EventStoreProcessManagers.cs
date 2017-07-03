@@ -1,20 +1,108 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using Athena.Configuration;
 using Athena.EventStore.Serialization;
 using Athena.Logging;
-using Athena.Processes;
+using Athena.MetaData;
+using Athena.Transactions;
 using EventStore.ClientAPI;
 
 namespace Athena.EventStore.ProcessManagers
 {
-    public class RunProcessManagers : LongRunningProcess
+    public class EventStoreProcessManagers : AppFunctionDefinition
     {
         private IEventStoreConnection _connection;
         private bool _running;
 
         private readonly IDictionary<string, ProcessManagerSubscription> _processManagerSubscriptions =
             new Dictionary<string, ProcessManagerSubscription>();
+        
+        private readonly ICollection<Transaction> _transactions = new List<Transaction>();
+        private readonly ICollection<ProcessManager> _processManagers = new List<ProcessManager>();
+        private readonly ICollection<MetaDataSupplier> _metaDataSuppliers = new List<MetaDataSupplier>();
+        private EventSerializer _serializer = new JsonEventSerializer();
+        private EventStoreConnectionString _connectionString 
+            = new EventStoreConnectionString("Ip=127.0.0.1;Port=1113;UserName=admin;Password=changeit;");
+
+        private Func<EventStoreProcessManagers, ProcessStateLoader> _getStateLoader = (settings) =>
+            new LoadProcessManagerStateFromEventStore(settings.GetConnectionString().CreateConnection());
+        
+        public EventStoreProcessManagers HandleTransactionsWith(Transaction transaction)
+        {
+            _transactions.Add(transaction);
+
+            return this;
+        }
+
+        public EventStoreProcessManagers SupplyMetaDataWith(MetaDataSupplier supplier)
+        {
+            _metaDataSuppliers.Add(supplier);
+
+            return this;
+        }
+
+        public EventStoreProcessManagers LoadStateWith(
+            Func<EventStoreProcessManagers, ProcessStateLoader> getStateLoader)
+        {
+            _getStateLoader = getStateLoader;
+
+            return this;
+        }
+
+        public EventStoreProcessManagers WithSerializer(EventSerializer serializer)
+        {
+            _serializer = serializer;
+
+            return this;
+        }
+
+        public EventStoreProcessManagers WithConnectionString(string connectionString)
+        {
+            _connectionString = new EventStoreConnectionString(connectionString);
+
+            return this;
+        }
+
+        public EventStoreProcessManagers WithProcessManager(ProcessManager processManager)
+        {
+            _processManagers.Add(processManager);
+
+            return this;
+        }
+
+        public EventSerializer GetSerializer()
+        {
+            return _serializer;
+        }
+
+        public EventStoreConnectionString GetConnectionString()
+        {
+            return _connectionString;
+        }
+
+        public IReadOnlyCollection<ProcessManager> GetProcessManagers()
+        {
+            return _processManagers.ToList();
+        }
+        
+        internal ProcessStateLoader GetStateLoader()
+        {
+            return _getStateLoader(this);
+        }
+
+        public string Name { get; } = "esprocessmanager";
+        
+        protected override AppFunctionBuilder DefineDefaultApplication(AppFunctionBuilder builder)
+        {
+            return builder
+                .First("HandleTransactions", next => new HandleTransactions(next,
+                    _transactions.ToList()).Invoke, () => _transactions.GetDiagnosticsData())
+                .ContinueWith("SupplyMetaData", next => new SupplyMetaData(next, _metaDataSuppliers.ToList()).Invoke,
+                    () => _metaDataSuppliers.GetDiagnosticsData())
+                .Last("ExecuteProcessManager", next => new ExecuteProcessManager(next).Invoke);
+        }
 
         public async Task Start(AthenaContext context)
         {
@@ -25,23 +113,21 @@ namespace Athena.EventStore.ProcessManagers
 
             _running = true;
 
-            var settings = context.GetSetting<ProcessManagersSettings>();
-
-            _connection = settings.GetConnectionString().CreateConnection(x => x
+            _connection = GetConnectionString().CreateConnection(x => x
                 .KeepReconnecting()
                 .KeepRetrying()
                 .UseCustomLogger(new EventStoreLog()));
 
-            var stateLoader = settings.GetStateLoader();
+            var stateLoader = GetStateLoader();
 
-            foreach (var processManager in settings.GetProcessManagers())
+            foreach (var processManager in GetProcessManagers())
             {
-                await SetupProcessManagerSubscription(processManager, context, settings, stateLoader)
+                await SetupProcessManagerSubscription(processManager, stateLoader, context)
                     .ConfigureAwait(false);
             }
         }
 
-        public Task Stop(AthenaContext context)
+        public Task Stop()
         {
             Logger.Write(LogLevel.Debug, $"Stopping process managers");
             
@@ -60,7 +146,7 @@ namespace Athena.EventStore.ProcessManagers
         }
 
         protected virtual async Task SetupProcessManagerSubscription(ProcessManager processManager, 
-            AthenaContext context, ProcessManagersSettings settings, ProcessStateLoader stateLoader)
+            ProcessStateLoader stateLoader, AthenaContext context)
         {
             while (true)
             {
@@ -80,10 +166,10 @@ namespace Athena.EventStore.ProcessManagers
                     var eventStoreSubscription = _connection.ConnectToPersistentSubscription(processManager.Name,
                         processManager.Name,
                         async (subscription, evnt) =>
-                            await PushEventToProcessManager(processManager, settings.GetSerializer().DeSerialize(evnt),
-                                subscription, context, stateLoader, settings).ConfigureAwait(false),
+                            await PushEventToProcessManager(processManager, GetSerializer().DeSerialize(evnt),
+                                subscription, stateLoader, context).ConfigureAwait(false),
                         async (subscription, reason, exception) =>
-                            await SubscriptionDropped(processManager, reason, exception, context, settings, stateLoader)
+                            await SubscriptionDropped(processManager, reason, exception, stateLoader, context)
                                 .ConfigureAwait(false),
                         autoAck: false);
 
@@ -106,8 +192,8 @@ namespace Athena.EventStore.ProcessManagers
         }
 
         protected virtual async Task PushEventToProcessManager(ProcessManager processManager,
-            DeSerializationResult evnt, EventStorePersistentSubscriptionBase subscription, AthenaContext context,
-            ProcessStateLoader stateLoader, ProcessManagersSettings settings)
+            DeSerializationResult evnt, EventStorePersistentSubscriptionBase subscription,
+            ProcessStateLoader stateLoader, AthenaContext context)
         {
             if (!_running)
                 return;
@@ -128,12 +214,12 @@ namespace Athena.EventStore.ProcessManagers
                 };
 
                 Logger.Write(LogLevel.Debug,
-                    $"Execution process manager application {settings.Name} for {processManager.Name}");
+                    $"Execution process manager application {Name} for {processManager.Name}");
                 
-                await context.Execute(settings.Name, requestEnvironment).ConfigureAwait(false);
+                await context.Execute(Name, requestEnvironment).ConfigureAwait(false);
 
                 Logger.Write(LogLevel.Debug,
-                    $"Process manager, \"{processManager.Name}\", executed. Application {settings.Name}");
+                    $"Process manager, \"{processManager.Name}\", executed. Application {Name}");
                 
                 subscription.Acknowledge(evnt.OriginalEvent);
             }
@@ -146,8 +232,7 @@ namespace Athena.EventStore.ProcessManagers
         }
 
         protected virtual Task SubscriptionDropped(ProcessManager processManager, SubscriptionDropReason reason,
-            Exception exception, AthenaContext context, ProcessManagersSettings settings, 
-            ProcessStateLoader stateLoader)
+            Exception exception, ProcessStateLoader stateLoader, AthenaContext context)
         {
             if (!_running)
                 return Task.CompletedTask;
@@ -157,7 +242,7 @@ namespace Athena.EventStore.ProcessManagers
                 exception);
 
             if (reason != SubscriptionDropReason.UserInitiated)
-                return SetupProcessManagerSubscription(processManager, context, settings, stateLoader);
+                return SetupProcessManagerSubscription(processManager, stateLoader, context);
 
             return Task.CompletedTask;
         }

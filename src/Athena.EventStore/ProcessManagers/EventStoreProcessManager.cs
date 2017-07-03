@@ -13,8 +13,10 @@ namespace Athena.EventStore.ProcessManagers
         public virtual string Name => GetType().FullName.Replace(".", "-").ToLower();
         
         public virtual async Task Handle(DeSerializationResult evnt, IDictionary<string, object> environment,
-            ProcessStateLoader stateLoader)
+            ProcessStateLoader stateLoader, AthenaContext context)
         {
+            var timeoutManager = context.GetSetting<TimeoutManager>();
+            
             var eventMappings = new Dictionary<Type, Tuple<Func<object, EventProcessingContext<TState>, Task>, 
                 Func<object, TIdentity>, string>>();
             
@@ -37,7 +39,8 @@ namespace Athena.EventStore.ProcessManagers
                     continue;
 
                 await handlerMapping
-                    .Item1(evnt, new EventProcessingContext<TState>(evnt, environment, state))
+                    .Item1(evnt, new EventProcessingContext<TState>(evnt, environment, state, 
+                        timeoutManager.RequestTimeout))
                     .ConfigureAwait(false);
             }
         }
@@ -57,15 +60,5 @@ namespace Athena.EventStore.ProcessManagers
         }
 
         protected abstract void MapEvents(ProcessManagerEventMappingContext<TState, TIdentity> mappingContext);
-
-        protected virtual Task RequestTimeout(object evnt, DateTime at)
-        {
-            return Timeouts.RequestTimeout(new ProcessManagerTimedOut(Name, evnt), at);
-        }
-
-        protected virtual Task RequestTimeout(object evnt, TimeSpan @in)
-        {
-            return RequestTimeout(evnt, DateTime.UtcNow + @in);
-        }
     }
 }

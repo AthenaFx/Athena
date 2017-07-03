@@ -1,6 +1,6 @@
 ﻿namespace Athena.Configuration
 {
-    public class ShutdownStarted : ShutdownEvent
+    public class ShutdownStarted
     {
         public ShutdownStarted(string applicationName, string environment)
         {

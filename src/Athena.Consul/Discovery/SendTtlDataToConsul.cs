@@ -1,62 +1,155 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Athena.Logging;
-using Athena.Processes;
+using Consul;
 using LogLevel = Athena.Logging.LogLevel;
 
 namespace Athena.Consul.Discovery
 {
-    public class SendTtlDataToConsul : LongRunningProcess
+    public class SendTtlDataToConsul
     {
         private CancellationTokenSource _cancellationTokenSource;
+        
+        private readonly List<string> _tags = new List<string>();
+        private string _overrideCheckName;
+        private string _overrideId;
+        private string _overrideCheckId;
+        
+        public string ApplicationName { get; private set; }
 
-        public Task Start(AthenaContext context)
+        public string CheckName => !string.IsNullOrEmpty(_overrideCheckName)
+            ? _overrideCheckName
+            : $"Service '{ApplicationName}' ttl check";
+
+        public string Id => !string.IsNullOrEmpty(_overrideId)
+            ? _overrideId
+            : $"{Environment.MachineName.ToLower()}-{ApplicationName.ToLower()}";
+
+        public string CheckId => !string.IsNullOrEmpty(_overrideCheckId)
+            ? _overrideCheckId
+            : $"service:{Id}:ttl";
+        
+        public string Address { get; private set; } = "";
+        public int Port { get; private set; }
+        public IReadOnlyCollection<string> Tags => _tags;
+        public HealthStatus InitialStatus { get; private set; } = HealthStatus.Passing;
+        public TimeSpan Ttl { get; private set; } = TimeSpan.FromSeconds(30);
+        public ConsulClient CLient { get; private set; } = new ConsulClient();
+
+        public SendTtlDataToConsul WithApplicationName(string name)
+        {
+            ApplicationName = name;
+
+            return this;
+        }
+
+        public SendTtlDataToConsul WithCheckName(string name)
+        {
+            _overrideCheckName = name;
+
+            return this;
+        }
+
+        public SendTtlDataToConsul WithId(string id)
+        {
+            _overrideId = id;
+
+            return this;
+        }
+
+        public SendTtlDataToConsul WithCheckId(string id)
+        {
+            _overrideCheckId = id;
+
+            return this;
+        }
+
+        public SendTtlDataToConsul WithAddress(string address)
+        {
+            Address = address;
+
+            return this;
+        }
+
+        public SendTtlDataToConsul WithPort(int port)
+        {
+            Port = port;
+
+            return this;
+        }
+
+        public SendTtlDataToConsul WithInitialStatus(HealthStatus status)
+        {
+            InitialStatus = status;
+
+            return this;
+        }
+
+        public SendTtlDataToConsul WithTtl(TimeSpan ttl)
+        {
+            Ttl = ttl;
+
+            return this;
+        }
+
+        public SendTtlDataToConsul WithClient(ConsulClient client)
+        {
+            CLient = client;
+
+            return this;
+        }
+
+        public SendTtlDataToConsul Tag(string tag)
+        {
+            _tags.Add(tag);
+
+            return this;
+        }
+
+        public Task Start()
         {
             _cancellationTokenSource = new CancellationTokenSource();
 
-            var settings = context.GetSetting<ConsulTtlCheckSettings>();
+            StartSendingTtl();
             
-            StartSendingTtl(settings);
-            
-            Logger.Write(LogLevel.Debug, $"Starting consul ttl check {settings.CheckId} for {settings.Id}");
+            Logger.Write(LogLevel.Debug, $"Starting consul ttl check {CheckId} for {Id}");
             
             return Task.CompletedTask;
         }
 
-        public Task Stop(AthenaContext context)
+        public Task Stop()
         {
-            var settings = context.GetSetting<ConsulTtlCheckSettings>();
-            
-            Logger.Write(LogLevel.Debug, $"Stopping consul ttl check {settings.CheckId} for {settings.Id}");
+            Logger.Write(LogLevel.Debug, $"Stopping consul ttl check {CheckId} for {Id}");
             
             _cancellationTokenSource?.Cancel();
             
             return Task.CompletedTask;
         }
 
-        private void StartSendingTtl(ConsulTtlCheckSettings settings)
+        private void StartSendingTtl()
         {
             var cancellationToken = _cancellationTokenSource.Token;
             
-            Task.Run(async () => await SendTtl(settings, cancellationToken).ConfigureAwait(false), cancellationToken)
+            Task.Run(async () => await SendTtl(cancellationToken).ConfigureAwait(false), cancellationToken)
                 .ContinueWith(t =>
                 {
                     (t.Exception ?? new AggregateException()).Handle(ex => true);
                     
                     Logger.Write(LogLevel.Warn, "Consul ttl send failed", t.Exception);
 
-                    StartSendingTtl(settings);
+                    StartSendingTtl();
                 }, TaskContinuationOptions.OnlyOnFaulted);
         }
 
-        private static async Task SendTtl(ConsulTtlCheckSettings settings, CancellationToken cancellationToken)
+        private async Task SendTtl(CancellationToken cancellationToken)
         {
-            var interval = settings.Ttl - new TimeSpan(settings.Ttl.Ticks / 2);
+            var interval = Ttl - new TimeSpan(Ttl.Ticks / 2);
             
             while (!cancellationToken.IsCancellationRequested)
             {
-                await settings.CLient.Agent.PassTTL(settings.CheckId, "Success", cancellationToken)
+                await CLient.Agent.PassTTL(CheckId, "Success", cancellationToken)
                     .ConfigureAwait(false);
 
                 await Task.Delay(interval, cancellationToken).ConfigureAwait(false);

@@ -1,48 +1,47 @@
 ﻿using System.Threading.Tasks;
 using Athena.Configuration;
 using Athena.Logging;
-using Athena.Processes;
 
 namespace Athena.EventStore.StreamSubscriptions
 {
     public static class SubscribersBootstrapExtensions
     {
-        public static PartConfiguration<LiveSubscribersSettings> UseEventStoreStreamLiveSubscribers(
+        public static PartConfiguration<RunStreamLiveSubscribers> UseEventStoreStreamLiveSubscribers(
             this AthenaBootstrapper bootstrapper)
         {
             Logger.Write(LogLevel.Debug,
                 $"Enabling EventStore live subscriptions for application {bootstrapper.ApplicationName}");
             
             return bootstrapper
-                .UseProcess(new RunStreamLiveSubscribers())
-                .ConfigureWith<LiveSubscribersSettings>((config, context) =>
+                .Part<RunStreamLiveSubscribers>()
+                .OnSetup(async (config, context) =>
                 {
                     Logger.Write(LogLevel.Debug,
                         $"Configuring EventStore live subscriptions for application {context.ApplicationName}");
                     
-                    context.DefineApplication(config.Name, config.GetApplicationBuilder());
-
-                    return Task.CompletedTask;
-                });
+                    await context.DefineApplication(config.Name, config.GetApplicationBuilder()).ConfigureAwait(false);
+                })
+                .OnStartup((config, context) => config.Start(context))
+                .OnShutdown((config, context) => config.Stop());
         }
         
-        public static PartConfiguration<PersistentSubscribersSettings> UseEventStoreStreamPersistentSubscribers(
+        public static PartConfiguration<RunStreamPersistentSubscribers> UseEventStoreStreamPersistentSubscribers(
             this AthenaBootstrapper bootstrapper)
         {
             Logger.Write(LogLevel.Debug,
                 $"Enabling EventStore persistent subscriptions for application {bootstrapper.ApplicationName}");
             
             return bootstrapper
-                .UseProcess(new RunStreamPersistentSubscribers())
-                .ConfigureWith<PersistentSubscribersSettings>((config, context) =>
+                .Part<RunStreamPersistentSubscribers>()
+                .OnSetup(async (config, context) =>
                 {
                     Logger.Write(LogLevel.Debug,
                         $"Configuring EventStore persistent subscriptions for application {context.ApplicationName}");
                     
-                    context.DefineApplication(config.Name, config.GetApplicationBuilder());
-
-                    return Task.CompletedTask;
-                });
+                    await context.DefineApplication(config.Name, config.GetApplicationBuilder()).ConfigureAwait(false);
+                })
+                .OnStartup((config, context) => config.Start(context))
+                .OnShutdown((config, context) => config.Stop());
         }
     }
 }

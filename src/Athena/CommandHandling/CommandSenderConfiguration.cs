@@ -63,13 +63,17 @@ namespace Athena.CommandHandling
             };
             
             return builder
-                .Last("HandleTransactions",
-                    next => new HandleTransactions(next, _transactions.ToList()).Invoke)
-                .Last("SupplyMetaData", next => new SupplyMetaData(next, _metaDataSuppliers.ToList()).Invoke)
-                .Last("RouteToResource", next => new RouteToResource(next, routers).Invoke)
-                .Last("EnsureEndpointExists", next => new EnsureEndpointExists(next, routeCheckers, x => 
-                    throw new CommandHandlerNotFoundException(x.Get<object>("command").GetType())).Invoke)
-                .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke);
+                .First("HandleTransactions",
+                    next => new HandleTransactions(next, _transactions.ToList()).Invoke,
+                    () => _transactions.GetDiagnosticsData())
+                .ContinueWith("SupplyMetaData", next => new SupplyMetaData(next, _metaDataSuppliers.ToList()).Invoke,
+                    () => _metaDataSuppliers.GetDiagnosticsData())
+                .ContinueWith("RouteToResource", next => new RouteToResource(next, routers).Invoke)
+                .ContinueWith("EnsureEndpointExists", next => new EnsureEndpointExists(next, routeCheckers, x => 
+                    throw new CommandHandlerNotFoundException(x.Get<object>("command").GetType())).Invoke,
+                    () => routeCheckers.GetDiagnosticsData())
+                .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke,
+                    () => resourceExecutors.GetDiagnosticsData());
         }
     }
 }

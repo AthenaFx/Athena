@@ -10,12 +10,13 @@ namespace Athena.Consul.Discovery
     {
         public static AthenaBootstrapper UseConsulHttpCheck(this AthenaBootstrapper bootstrapper, string url)
         {
-            Logger.Write(LogLevel.Debug, $"Adding consul http check");
+            Logger.Write(LogLevel.Debug, "Adding consul http check");
             
             return bootstrapper
-                .ConfigureWith<ConsulHttpCheckSettings, BootstrapCompleted>(async (config, evnt, context) =>
+                .Part<ConsulHttpCheckSettings>()
+                .OnStartup(async (config, context) =>
                 {
-                    Logger.Write(LogLevel.Debug, $"Configuring consul http check");
+                    Logger.Write(LogLevel.Debug, "Configuring consul http check");
                     
                     await config.CLient.Agent.ServiceRegister(new AgentServiceRegistration
                     {

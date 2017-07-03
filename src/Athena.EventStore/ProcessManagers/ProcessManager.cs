@@ -10,7 +10,7 @@ namespace Athena.EventStore.ProcessManagers
         string Name { get; }
 
         Task Handle(DeSerializationResult evnt, IDictionary<string, object> environment,
-            ProcessStateLoader stateLoader);
+            ProcessStateLoader stateLoader, AthenaContext context);
         IEnumerable<string> GetInterestingStreams();
         IReadOnlyDictionary<Type, string> GetEventMappings();
     }

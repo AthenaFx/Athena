@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using Athena.Logging;
 
@@ -24,21 +23,13 @@ namespace Athena.Diagnostics
         public async Task Invoke(IDictionary<string, object> environment)
         {
             Logger.Write(LogLevel.Debug, $"Starting to diagnose {_nextItem}");
-            
-            var timer = Stopwatch.StartNew();
+
+            var context = _diagnosticsDataManager.OpenDiagnosticsTimerContext(environment, "Middlewares", _nextItem);
 
             await _next(environment).ConfigureAwait(false);
-            
-            timer.Stop();
 
-            await _diagnosticsDataManager.AddDiagnostics(environment.GetCurrentApplication(),
-                DiagnosticsTypes.MiddlewareExecution, environment.GetRequestId(), 
-                new DiagnosticsData($"MiddleWare-{_nextItem}-Executed", new Dictionary<string, string>
-                {
-                    ["Middleware"] = _nextItem,
-                    ["ExecutionTime"] = timer.Elapsed.ToString()
-                }));
-            
+            await context.Finish().ConfigureAwait(false);
+
             Logger.Write(LogLevel.Debug, $"Diagnose of {_nextItem} finished");
         }
     }

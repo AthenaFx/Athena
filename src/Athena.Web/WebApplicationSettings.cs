@@ -22,6 +22,10 @@ namespace Athena.Web
         private readonly ICollection<ValidateRouteResult> _validators = new List<ValidateRouteResult>();
         private readonly ICollection<Authorizer> _authorizers = new List<Authorizer>();
         private readonly ICollection<MetaDataSupplier> _metaDataSuppliers = new List<MetaDataSupplier>();
+        private readonly ICollection<FindCacheDataForRequest> _cacheDataFinders = new List<FindCacheDataForRequest>
+        {
+            new FindCacheDataForStaticFileRequest()
+        };
         private IdentityFinder _identityFinder = new NullIdentityFinder();
 
         private Func<WebApplicationSettings, AthenaBootstrapper, IReadOnlyCollection<Route>> _buildRoutes
@@ -32,10 +36,17 @@ namespace Athena.Web
         public string Name { get; private set; }
 
         public string BaseUrl { get; private set; }
-        
+
         internal WebApplicationSettings WithName(string name)
         {
             Name = name;
+
+            return this;
+        }
+
+        public WebApplicationSettings FindCacheConfigurationWith(FindCacheDataForRequest configFinder)
+        {
+            _cacheDataFinders.Add(configFinder);
 
             return this;
         }
@@ -89,7 +100,7 @@ namespace Athena.Web
 
             return this;
         }
-        
+
         protected override AppFunctionBuilder DefineDefaultApplication(AppFunctionBuilder builder)
         {
             var routes = _buildRoutes(this, builder.Bootstrapper);
@@ -123,11 +134,6 @@ namespace Athena.Web
                 new MethodResourceExecutor(binders)
             };
 
-            var routerCacheDataFinders = new List<FindCacheDataForRequest>
-            {
-                new FindCacheDataForStaticFileRequest()
-            };
-
             var mediaTypeFinders = new List<FindMediaTypesForRequest>
             {
                 new FindAvailableMediaTypesFromMethodRouteResult(binders),
@@ -140,42 +146,49 @@ namespace Athena.Web
                 new CheckIfMethodResourceExists(binders)
             };
 
-            return builder.Last("HandleExceptions", next => new HandleExceptions(next, async (exception, environment) =>
-                {
-                    var context = environment.GetAthenaContext();
+            return builder.First("HandleExceptions", next => new HandleExceptions(next,
+                    async (exception, environment) =>
+                    {
+                        var context = environment.GetAthenaContext();
 
-                    await context.Execute($"{Name}_error", environment).ConfigureAwait(false);
-                }).Invoke)
-                .Last("MakeSureUrlIsUnique", next => new MakeSureUrlIsUnique(next).Invoke)
-                .Last("HandleTransactions",
-                    next => new HandleTransactions(next, _transactions.ToList()).Invoke)
-                .Last("SupplyMetaData", next => new SupplyMetaData(next, _metaDataSuppliers.ToList()).Invoke)
-                .Last("RouteToResource",
+                        await context.Execute($"{Name}_error", environment).ConfigureAwait(false);
+                    }).Invoke)
+                .ContinueWith("MakeSureUrlIsUnique", next => new MakeSureUrlIsUnique(next).Invoke)
+                .ContinueWith("HandleTransactions",
+                    next => new HandleTransactions(next, _transactions.ToList()).Invoke,
+                    () => _transactions.GetDiagnosticsData())
+                .ContinueWith("SupplyMetaData", next => new SupplyMetaData(next, _metaDataSuppliers.ToList()).Invoke,
+                    () => _metaDataSuppliers.GetDiagnosticsData())
+                .ContinueWith("RouteToResource",
                     next => new RouteToResource(next, routers).Invoke, () => routes.GetDiagnosticsData())
-                .Last("EnsureEndpointExists", next => new EnsureEndpointExists(next, routeCheckers, async environment => 
-                {
-                    var context = environment.GetAthenaContext();
+                .ContinueWith("EnsureEndpointExists", next => new EnsureEndpointExists(next, routeCheckers,
+                    async environment =>
+                    {
+                        var context = environment.GetAthenaContext();
 
-                    await context.Execute($"{Name}_missing", environment).ConfigureAwait(false);
-                }).Invoke)
-                .Last("UseCorrectOutputParser",
-                    next => new UseCorrectOutputParser(next, mediaTypeFinders, outputParsers).Invoke)
-                .Last("Authorize", next => new Authorize(next, _authorizers.ToList(), _identityFinder,
+                        await context.Execute($"{Name}_missing", environment).ConfigureAwait(false);
+                    }).Invoke, () => routeCheckers.GetDiagnosticsData())
+                .ContinueWith("UseCorrectOutputParser",
+                    next => new UseCorrectOutputParser(next, mediaTypeFinders, outputParsers).Invoke,
+                    () => outputParsers.GetDiagnosticsData())
+                .ContinueWith("Authorize", next => new Authorize(next, _authorizers.ToList(), _identityFinder,
                     async environment =>
                     {
                         var context = environment.GetAthenaContext();
 
                         await context.Execute($"{Name}_unauthorized", environment).ConfigureAwait(false);
-                    }).Invoke)
-                .Last("ValidateParameters",
-                    next => new ValidateParameters(next, _validators.ToList(), async environment => 
+                    }).Invoke, () => _authorizers.GetDiagnosticsData())
+                .ContinueWith("ValidateParameters",
+                    next => new ValidateParameters(next, _validators.ToList(), async environment =>
                     {
                         var context = environment.GetAthenaContext();
 
                         await context.Execute($"{Name}_invalid", environment).ConfigureAwait(false);
-                    }).Invoke)
-                .Last("ValidateCache", next => new ValidateCache(next, routerCacheDataFinders).Invoke)
-                .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke)
+                    }).Invoke, () => _validators.GetDiagnosticsData())
+                .ContinueWith("ValidateCache", next => new ValidateCache(next, _cacheDataFinders.ToList()).Invoke,
+                    () => _cacheDataFinders.GetDiagnosticsData())
+                .ContinueWith("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke,
+                    () => resourceExecutors.GetDiagnosticsData())
                 .Last("WriteOutput",
                     next => new WriteOutput(next, new FindStatusCodeFromResultWithStatusCode()).Invoke);
         }
