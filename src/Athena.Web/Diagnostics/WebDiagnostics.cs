@@ -2,6 +2,7 @@
 using System.Reflection;
 using Athena.Configuration;
 using Athena.Diagnostics;
+using Athena.Logging;
 using Athena.Web.Routing;
 
 namespace Athena.Web.Diagnostics
@@ -11,6 +12,8 @@ namespace Athena.Web.Diagnostics
         public static PartConfiguration<WebApplicationSettings> WithWebUi(
             this PartConfiguration<DiagnosticsConfiguration> config)
         {
+            Logger.Write(LogLevel.Debug, $"Enabling UI for diagnostics");
+            
             return config
                 .UsingWebApplication("diagnostics_web")
                 .Configure(x => x.WithBaseUrl("_diagnostics").BuildRoutesWith((settings, bootstrapper) =>

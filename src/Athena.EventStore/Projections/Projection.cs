@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using Athena.EventStore.Serialization;
+using Athena.Logging;
 
 namespace Athena.EventStore.Projections
 {
@@ -14,6 +15,8 @@ namespace Athena.EventStore.Projections
 
         public virtual async Task Apply(DeSerializationResult evnt, IDictionary<string, object> environment)
         {
+            Logger.Write(LogLevel.Debug, $"Applying {evnt.Data} to projection {Name}");
+            
             var mappings = new Dictionary<Type, Tuple<Func<object, EventContext<TState>, Task>,
                 Func<DeSerializationResult, TIdentity>>>();
 

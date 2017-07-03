@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Athena.Logging;
 using Athena.Resources;
 
 namespace Athena.Web.Parsing
@@ -21,6 +22,8 @@ namespace Athena.Web.Parsing
 
         public async Task Invoke(IDictionary<string, object> environment)
         {
+            Logger.Write(LogLevel.Debug, $"Starting output writing for request {environment.GetRequestId()}");
+            
             var result = environment.GetResourceResult();
 
             var response = environment.GetResponse();
@@ -29,6 +32,8 @@ namespace Athena.Web.Parsing
 
             await environment.ParseAndWrite(result);
 
+            Logger.Write(LogLevel.Debug, $"Finished writing output for request {environment.GetRequestId()}");
+            
             await _next(environment).ConfigureAwait(false);
         }
     }

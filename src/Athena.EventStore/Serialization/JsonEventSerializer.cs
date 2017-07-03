@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Athena.Logging;
 using EventStore.ClientAPI;
 using Newtonsoft.Json;
 
@@ -21,6 +22,8 @@ namespace Athena.EventStore.Serialization
 
         public SerializationResult Serialize(Guid eventId, object evnt, IDictionary<string, object> headers)
         {
+            Logger.Write(LogLevel.Debug, $"Serializing event {evnt} with id {eventId}");
+            
             var data = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(evnt, SerializerSettings));
 
             var eventHeaders = new Dictionary<string, object>(headers)
@@ -47,6 +50,8 @@ namespace Athena.EventStore.Serialization
             }
             catch (Exception exception)
             {
+                Logger.Write(LogLevel.Info, $"Event deserialization failed", exception);
+                
                 return new DeSerializationResult(null, new Dictionary<string, object>(), resolvedEvent, exception);
             }
         }

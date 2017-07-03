@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Athena.Configuration;
+using Athena.Logging;
 using Athena.PartialApplications;
 
 namespace Athena.Web
@@ -15,6 +16,8 @@ namespace Athena.Web
             if (_hasConfiguredWeb)
                 return bootstrapper.Configure<WebApplicationsRouterSettings>();
             
+            Logger.Write(LogLevel.Debug, $"Enabling web applications");
+            
             _hasConfiguredWeb = true;
                 
             return bootstrapper
@@ -22,6 +25,8 @@ namespace Athena.Web
                 {
                     var applications = conf.GetApplications();
 
+                    Logger.Write(LogLevel.Debug, $"Configuring {applications.Count} web applications");
+                    
                     foreach (var application in applications)
                         context.DefineApplication(application.Item3.Name, application.Item3.GetApplicationBuilder());
                         
@@ -43,6 +48,8 @@ namespace Athena.Web
             this AthenaBootstrapper bootstrapper, string name = "default_web")
         {
             var key = $"_web_application_{name}";
+            
+            Logger.Write(LogLevel.Debug, $"Adding web application named {name}");
             
             var appConfiguration = bootstrapper
                 .UsingWeb()

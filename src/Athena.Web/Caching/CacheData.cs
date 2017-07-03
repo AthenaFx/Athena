@@ -27,5 +27,10 @@ namespace Athena.Web.Caching
         {
             return new CacheData(CacheControl, etag);
         }
+
+        public override string ToString()
+        {
+            return $"{CacheControl ?? ""};{Etag ?? ""}";
+        }
     }
 }

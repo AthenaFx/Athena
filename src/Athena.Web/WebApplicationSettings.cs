@@ -123,9 +123,9 @@ namespace Athena.Web
                 new MethodResourceExecutor(binders)
             };
 
-            var routerCacheDataFinders = new List<FindCacheDataForRoute>
+            var routerCacheDataFinders = new List<FindCacheDataForRequest>
             {
-                new FindCacheDataForStaticFileRoute()
+                new FindCacheDataForStaticFileRequest()
             };
 
             var mediaTypeFinders = new List<FindMediaTypesForRequest>

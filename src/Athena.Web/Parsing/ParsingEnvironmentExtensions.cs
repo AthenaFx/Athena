@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Athena.Logging;
 
 namespace Athena.Web.Parsing
 {
@@ -23,6 +24,8 @@ namespace Athena.Web.Parsing
 
             if (parser == null)
             {
+                Logger.Write(LogLevel.Debug, $"No parser found for request {environment.GetRequestId()}");
+                
                 await response.Write((output ?? "").ToString()).ConfigureAwait(false);
 
                 return;
@@ -31,6 +34,8 @@ namespace Athena.Web.Parsing
             var outputResult = await parser.Parse(output);
 
             response.Headers.ContentType = outputResult.ContentType;
+            
+            Logger.Write(LogLevel.Debug, $"Writing body using parser {parser}");
 
             if (outputResult.Body == null)
                 return;

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Athena.Logging;
 
 namespace Athena.Web.Parsing
 {
@@ -27,6 +28,8 @@ namespace Athena.Web.Parsing
 
         public async Task Invoke(IDictionary<string, object> environment)
         {
+            Logger.Write(LogLevel.Debug, $"Finding correct output parser for request {environment.GetRequestId()}");
+            
             var acceptedMediaTypes = environment.GetRequest().Headers.GetAcceptedMediaTypes().ToList();
             var renderableMediaTypes = await FindRenderableMediaTypes(environment).ConfigureAwait(false);
 
@@ -54,6 +57,8 @@ namespace Athena.Web.Parsing
 
             if (parser == null)
             {
+                Logger.Write(LogLevel.Debug, $"No parser found for request {environment.GetRequestId()}");
+                
                 environment.GetResponse().StatusCode = 406;
 
                 return;
@@ -61,6 +66,8 @@ namespace Athena.Web.Parsing
 
             using (environment.UsingParser(parser))
             {
+                Logger.Write(LogLevel.Debug, $"Using parser {parser} for request {environment.GetRequestId()}");
+                
                 await _next(environment);
             }
         }

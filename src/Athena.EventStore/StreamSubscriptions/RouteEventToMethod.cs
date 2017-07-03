@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
-using Athena.Configuration;
 using Athena.EventStore.Serialization;
 using Athena.Routing;
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Athena.Logging;
 using Athena.Routing;
 
 namespace Athena.Web.Validation
@@ -28,6 +29,8 @@ namespace Athena.Web.Validation
 
         public async Task Invoke(IDictionary<string, object> environment)
         {
+            Logger.Write(LogLevel.Debug, $"Validating parameter for request {environment.GetRequestId()}");
+            
             var result = environment.GetRouteResult();
 
             if (result == null)
@@ -46,10 +49,14 @@ namespace Athena.Web.Validation
 
             if (!validationResult.IsValid)
             {
+                Logger.Write(LogLevel.Debug, $"Request invalid {environment.GetRequestId()}");
+                
                 await _onInvalid(environment).ConfigureAwait(false);
 
                 return;
             }
+            
+            Logger.Write(LogLevel.Debug, $"Request valid {environment.GetRequestId()}");
 
             await _next(environment).ConfigureAwait(false);
         }

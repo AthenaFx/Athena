@@ -20,6 +20,8 @@ namespace Athena.EventStore.ProcessManagers
         {
             if (_running)
                 return;
+            
+            Logger.Write(LogLevel.Debug, $"Starting process managers");
 
             _running = true;
 
@@ -41,6 +43,8 @@ namespace Athena.EventStore.ProcessManagers
 
         public Task Stop(AthenaContext context)
         {
+            Logger.Write(LogLevel.Debug, $"Stopping process managers");
+            
             _running = false;
 
             foreach (var subscription in _processManagerSubscriptions)
@@ -62,6 +66,8 @@ namespace Athena.EventStore.ProcessManagers
             {
                 if (!_running)
                     return;
+                
+                Logger.Write(LogLevel.Debug, $"Starting process manager {processManager.Name}");
                 
                 if (_processManagerSubscriptions.ContainsKey(processManager.Name))
                 {
@@ -91,7 +97,7 @@ namespace Athena.EventStore.ProcessManagers
                     if (!_running)
                         return;
 
-                    Logger.Write(LogLevel.Error,
+                    Logger.Write(LogLevel.Warn,
                         $"Couldn't subscribe processmanager: {processManager.Name}. Retrying in 5 seconds.", ex);
 
                     await Task.Delay(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
@@ -108,6 +114,8 @@ namespace Athena.EventStore.ProcessManagers
 
             if (!evnt.Successful)
             {
+                Logger.Write(LogLevel.Info, $"Event deserialization failed", evnt.Error);
+                
                 subscription.Fail(evnt.OriginalEvent, PersistentSubscriptionNakEventAction.Unknown, evnt.Error.Message);
                 return;
             }
@@ -119,7 +127,13 @@ namespace Athena.EventStore.ProcessManagers
                     ["context"] = new ProcessManagerExecutionContext(processManager, evnt, stateLoader)
                 };
 
+                Logger.Write(LogLevel.Debug,
+                    $"Execution process manager application {settings.Name} for {processManager.Name}");
+                
                 await context.Execute(settings.Name, requestEnvironment).ConfigureAwait(false);
+
+                Logger.Write(LogLevel.Debug,
+                    $"Process manager, \"{processManager.Name}\", executed. Application {settings.Name}");
                 
                 subscription.Acknowledge(evnt.OriginalEvent);
             }

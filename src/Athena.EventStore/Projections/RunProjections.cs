@@ -23,6 +23,8 @@ namespace Athena.EventStore.Projections
             if(_running)
                 return;
             
+            Logger.Write(LogLevel.Debug, $"Starting projections");
+            
             _running = true;
 
             var settings = context.GetSetting<ProjectionSettings>();
@@ -38,6 +40,8 @@ namespace Athena.EventStore.Projections
 
         public Task Stop(AthenaContext context)
         {
+            Logger.Write(LogLevel.Debug, $"Stopping projections");
+            
             _running = false;
 
             foreach (var subscription in _projectionSubscriptions)
@@ -62,6 +66,8 @@ namespace Athena.EventStore.Projections
             {
                 if(!_running)
                     return;
+                
+                Logger.Write(LogLevel.Debug, $"Starting projections {projection}");
                 
                 if (_projectionSubscriptions.ContainsKey(projection.Name))
                 {
@@ -111,7 +117,7 @@ namespace Athena.EventStore.Projections
                         return;
                     
                     Logger.Write(LogLevel.Error, 
-                        $"Failed to start projection: {projection.GetType().FullName}. Retrying...", e);
+                        $"Failed to start projection: {projection}. Retrying...", e);
 
                     await Task.Delay(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
                 }
@@ -126,7 +132,7 @@ namespace Athena.EventStore.Projections
 
             if (reason != SubscriptionDropReason.UserInitiated)
             {
-                Logger.Write(LogLevel.Error, $"Projection {projection.GetType().FullName} failed. Restarting...",
+                Logger.Write(LogLevel.Error, $"Projection {projection} failed. Restarting...",
                     exception);
                 
                 await StartProjection(projection, context, settings).ConfigureAwait(false);
@@ -141,7 +147,7 @@ namespace Athena.EventStore.Projections
             _projectionSubscriptions[projection.Name].Close();
             _projectionSubscriptions.Remove(projection.Name);
             
-            Logger.Write(LogLevel.Info, $"Projection {projection.GetType().FullName} stopped.");
+            Logger.Write(LogLevel.Info, $"Projection {projection} stopped.");
         }
         
         private async Task HandleEvents(EventStoreProjection projection, IEnumerable<DeSerializationResult> events,
@@ -165,8 +171,14 @@ namespace Athena.EventStore.Projections
                 {
                     ["context"] = new ProjectionContext(projection, eventsList, handled)
                 };
+                
+                Logger.Write(LogLevel.Debug,
+                    $"Execution projections application {settings.Name} for {projection}");
 
                 await context.Execute(settings.Name, requestEnvironment).ConfigureAwait(false);
+                
+                Logger.Write(LogLevel.Debug,
+                    $"Projection, \"{projection.Name}\", executed. Application {settings.Name}");
             }
             catch (Exception ex)
             {

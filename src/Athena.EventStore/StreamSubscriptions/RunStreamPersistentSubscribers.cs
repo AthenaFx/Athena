@@ -20,6 +20,8 @@ namespace Athena.EventStore.StreamSubscriptions
         {
             if (_running)
                 return;
+            
+            Logger.Write(LogLevel.Debug, $"Starting EventStore persistent subscriptions");
 
             _running = true;
 
@@ -40,6 +42,8 @@ namespace Athena.EventStore.StreamSubscriptions
 
         public Task Stop(AthenaContext context)
         {
+            Logger.Write(LogLevel.Debug, $"Stopping EventStore persistent subscriptions");
+            
             _running = false;
 
             foreach (var subscription in _serviceSubscriptions)
@@ -62,6 +66,8 @@ namespace Athena.EventStore.StreamSubscriptions
 
             while (true)
             {
+                Logger.Write(LogLevel.Debug, $"Subscribing to group {groupName}");
+                
                 if (_serviceSubscriptions.ContainsKey(groupName))
                 {
                     _serviceSubscriptions[groupName].Close();
@@ -138,13 +144,18 @@ namespace Athena.EventStore.StreamSubscriptions
                     ["event"] = evnt
                 };
 
+                Logger.Write(LogLevel.Debug,
+                    $"Executing persistent subscription application {settings.Name} for event {evnt.Data}");
+                
                 await context.Execute(settings.Name, requestEnvironment).ConfigureAwait(false);
 
                 done(evnt);
+                
+                Logger.Write(LogLevel.Debug, $"Persistent subscription application executed for event {evnt.Data}");
             }
             catch (Exception ex)
             {
-                Logger.Write(LogLevel.Error, $"Couldn't handle event: {evnt.Data.GetType().FullName}", ex);
+                Logger.Write(LogLevel.Error, $"Couldn't handle event: {evnt.Data}", ex);
                 error(evnt, ex);
             }
         }

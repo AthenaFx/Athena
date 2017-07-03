@@ -20,6 +20,8 @@ namespace Athena.EventStore.StreamSubscriptions
         {
             if (_running)
                 return;
+            
+            Logger.Write(LogLevel.Debug, $"Starting EventStore live subscriptions");
 
             _running = true;
 
@@ -40,6 +42,8 @@ namespace Athena.EventStore.StreamSubscriptions
 
         public Task Stop(AthenaContext context)
         {
+            Logger.Write(LogLevel.Debug, $"Stopping EventStore live subscriptions");
+            
             _running = false;
 
             foreach (var subscription in _serviceSubscriptions)
@@ -62,6 +66,8 @@ namespace Athena.EventStore.StreamSubscriptions
             {
                 if (!_running)
                     return;
+                
+                Logger.Write(LogLevel.Debug, $"Subscribing to stream {stream}");
 
                 try
                 {
@@ -132,10 +138,15 @@ namespace Athena.EventStore.StreamSubscriptions
                 {
                     ["event"] = evnt
                 };
+                
+                Logger.Write(LogLevel.Debug,
+                    $"Executing live subscription application {settings.Name} for event {evnt.Data}");
 
                 await context.Execute(settings.Name, requestEnvironment).ConfigureAwait(false);
 
                 done(evnt);
+                
+                Logger.Write(LogLevel.Debug, $"Live subscription application executed for event {evnt.Data}");
             }
             catch (Exception ex)
             {

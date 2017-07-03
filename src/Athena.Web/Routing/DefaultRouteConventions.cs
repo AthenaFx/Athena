@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
+using Athena.Logging;
 
 namespace Athena.Web.Routing
 {
@@ -98,7 +99,12 @@ namespace Athena.Web.Routing
                         routeParts.Add($"{{{extraUrlParameter.ToLower()}}}");
                 }
 
-                result.Add(new Route(alterPattern(string.Join("/", routeParts)), availableMethod, new List<string>
+                var pattern = alterPattern(string.Join("/", routeParts));
+
+                Logger.Write(LogLevel.Debug,
+                    $"Adding route with pattern {pattern} for {availableMethod.DeclaringType.Namespace}.{availableMethod.DeclaringType.Name}.{availableMethod.Name}()");
+                
+                result.Add(new Route(pattern, availableMethod, new List<string>
                 {
                     availableMethod.Name.ToUpper()
                 }));
