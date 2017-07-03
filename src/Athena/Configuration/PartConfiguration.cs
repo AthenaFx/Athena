@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Athena.Logging;
 
 namespace Athena.Configuration
 {
@@ -71,6 +72,8 @@ namespace Athena.Configuration
 
         internal async Task<object> ConfigureParent(object parent, AthenaSetupContext context)
         {
+            Logger.Write(LogLevel.Debug, $"Configuring parent {parent?.GetType()}");
+            
             var me = GetPart();
 
             foreach (var child in Children)
@@ -84,7 +87,6 @@ namespace Athena.Configuration
     
     public class PartConfiguration<TPart> : PartConfiguration where TPart : class, new()
     {
-        private TPart _part;
         private bool _hasSetup;
         private readonly AthenaBootstrapper _bootstrapper;
         
@@ -96,12 +98,16 @@ namespace Athena.Configuration
             : base(bootstrapper, key)
         {
             _bootstrapper = bootstrapper;
-            _part = new TPart();
+            Settings = new TPart();
         }
+        
+        public TPart Settings { get; private set; }
 
         public PartConfiguration<TPart> Configure(Func<TPart, TPart> configure)
         {
-            _part = configure(_part);
+            Logger.Write(LogLevel.Debug, $"Configuration started");
+            
+            Settings = configure(Settings);
 
             return this;
         }
@@ -110,6 +116,8 @@ namespace Athena.Configuration
             Func<TPart, TChild, AthenaSetupContext, Task<TPart>> configureParent, string key = null) 
             where TChild : class, new()
         {
+            Logger.Write(LogLevel.Debug, $"Adding child ({typeof(TChild)} to {typeof(TPart)}");
+            
             var child = _bootstrapper.ConfigureWith<TChild>(key);
             child.ConfigureParentWith(async (parent, me, context) => 
                 await configureParent((TPart) parent, (TChild) me, context).ConfigureAwait(false));
@@ -126,6 +134,23 @@ namespace Athena.Configuration
             return Child<TChild>((parent, child, context) => 
                 Task.FromResult(configureParent(parent, child, context)), key);
         }
+
+        public PartConfiguration<TChild> Child<TChild>(string key = null) where TChild : class, new()
+        {
+            Logger.Write(LogLevel.Debug, $"Getting child ({typeof(TChild)}) for {typeof(TPart)}");
+            
+            if (string.IsNullOrEmpty(key))
+                key = typeof(TPart).AssemblyQualifiedName;
+
+            var currentChild = Children
+                .OfType<PartConfiguration<TChild>>()
+                .FirstOrDefault(x => x.Key == key);
+            
+            if(currentChild == null)
+                throw new InvalidOperationException($"There is no child of type {typeof(TChild)} with key {key}");
+
+            return currentChild;
+        }
         
         internal override async Task TrySetUp(SetupEvent evnt, AthenaSetupContext context)
         {
@@ -136,10 +161,12 @@ namespace Athena.Configuration
             if(!availableSetups.Any())
                 return;
 
+            Logger.Write(LogLevel.Debug, $"Setting up {typeof(TPart)} for {evnt} ({availableSetups.Count} setups)");
+            
             if (!_hasSetup)
             {
                 foreach (var child in Children)
-                    _part = (TPart) (await child.ConfigureParent(_part, context).ConfigureAwait(false));
+                    Settings = (TPart) (await child.ConfigureParent(Settings, context).ConfigureAwait(false));
             }
             
             _hasSetup = true;
@@ -153,12 +180,14 @@ namespace Athena.Configuration
 
         internal override object GetPart()
         {
-            return _part;
+            return Settings;
         }
 
         internal void WithSetup<TEvent>(Func<TPart, TEvent, AthenaSetupContext, Task> setup,
             Func<TEvent, bool> filter = null) where TEvent : SetupEvent
         {
+            Logger.Write(LogLevel.Debug, $"Configuring setup for {typeof(TPart)} ({typeof(TEvent)})");
+            
             filter = filter ?? (x => true);
 
             var fullFilter 

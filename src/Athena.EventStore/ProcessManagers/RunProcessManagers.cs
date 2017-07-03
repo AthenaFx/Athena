@@ -39,7 +39,7 @@ namespace Athena.EventStore.ProcessManagers
             }
         }
 
-        public Task Stop()
+        public Task Stop(AthenaContext context)
         {
             _running = false;
 

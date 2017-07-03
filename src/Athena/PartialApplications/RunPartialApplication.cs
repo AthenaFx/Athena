@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Athena.Logging;
 
 namespace Athena.PartialApplications
 {
@@ -23,6 +24,11 @@ namespace Athena.PartialApplications
 
             if (!string.IsNullOrEmpty(application))
                 await environment.GetAthenaContext().Execute(application, environment).ConfigureAwait(false);
+            else
+            {
+                Logger.Write(LogLevel.Info,
+                    $"Can't find any applications to execute for request {environment.GetRequestId()}");
+            }
 
             await _next(environment);
         }

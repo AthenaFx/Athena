@@ -17,6 +17,7 @@ namespace Athena.EventStore.StreamSubscriptions
     {
         private readonly ICollection<Transaction> _transactions = new List<Transaction>();
         private readonly ICollection<Tuple<string, int>> _streams = new List<Tuple<string, int>>();
+        private readonly ICollection<MetaDataSupplier> _metaDataSuppliers = new List<MetaDataSupplier>();
         private EventSerializer _serializer = new JsonEventSerializer();
         private EventStoreConnectionString _connectionString 
             = new EventStoreConnectionString("Ip=127.0.0.1;Port=1113;UserName=admin;Password=changeit;");
@@ -28,6 +29,13 @@ namespace Athena.EventStore.StreamSubscriptions
             return this;
         }
 
+        public LiveSubscribersSettings SupplyMetaDataWith(MetaDataSupplier supplier)
+        {
+            _metaDataSuppliers.Add(supplier);
+
+            return this;
+        }
+        
         public LiveSubscribersSettings SubscribeToStream(string stream, int workers = 1)
         {
             _streams.Add(new Tuple<string, int>(stream, workers));
@@ -91,7 +99,7 @@ namespace Athena.EventStore.StreamSubscriptions
                 .Last("Retry", next => new Retry(next, 5, TimeSpan.FromSeconds(1), "Subscription failed").Invoke)
                 .Last("HandleTransactions",
                     next => new HandleTransactions(next, _transactions.ToList()).Invoke)
-                .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
+                .Last("SupplyMetaData", next => new SupplyMetaData(next, _metaDataSuppliers.ToList()).Invoke)
                 .Last("RouteToResource", next => new RouteToResource(next, routers).Invoke)
                 .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke);
         }

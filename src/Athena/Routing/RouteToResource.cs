@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using Athena.Logging;
 
 namespace Athena.Routing
 {
@@ -19,9 +21,15 @@ namespace Athena.Routing
 
         public async Task Invoke(IDictionary<string, object> environment)
         {
+            Logger.Write(LogLevel.Debug,
+                $"Routing request {environment.GetRequestId()} ({environment.GetCurrentApplication()})");
+            
             var routeResult = await _environmentRouters.RouteRequest(environment);
 
             environment.SetRouteResult(routeResult);
+
+            Logger.Write(LogLevel.Debug,
+                $"Request, {environment.GetRequestId()} ({environment.GetCurrentApplication()}), routed {routeResult?.ToString() ?? ""}");
 
             await _next(environment);
         }

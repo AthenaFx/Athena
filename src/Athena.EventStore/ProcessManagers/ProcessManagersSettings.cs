@@ -12,6 +12,7 @@ namespace Athena.EventStore.ProcessManagers
     {
         private readonly ICollection<Transaction> _transactions = new List<Transaction>();
         private readonly ICollection<ProcessManager> _processManagers = new List<ProcessManager>();
+        private readonly ICollection<MetaDataSupplier> _metaDataSuppliers = new List<MetaDataSupplier>();
         private EventSerializer _serializer = new JsonEventSerializer();
         private EventStoreConnectionString _connectionString 
             = new EventStoreConnectionString("Ip=127.0.0.1;Port=1113;UserName=admin;Password=changeit;");
@@ -22,6 +23,13 @@ namespace Athena.EventStore.ProcessManagers
         public ProcessManagersSettings HandleTransactionsWith(Transaction transaction)
         {
             _transactions.Add(transaction);
+
+            return this;
+        }
+
+        public ProcessManagersSettings SupplyMetaDataWith(MetaDataSupplier supplier)
+        {
+            _metaDataSuppliers.Add(supplier);
 
             return this;
         }
@@ -82,7 +90,7 @@ namespace Athena.EventStore.ProcessManagers
             return builder
                 .Last("HandleTransactions", next => new HandleTransactions(next,
                     _transactions.ToList()).Invoke)
-                .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
+                .Last("SupplyMetaData", next => new SupplyMetaData(next, _metaDataSuppliers.ToList()).Invoke)
                 .Last("ExecuteProcessManager", next => new ExecuteProcessManager(next).Invoke);
         }
     }

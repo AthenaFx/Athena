@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Athena.Logging;
 
 namespace Athena.Binding
 {
@@ -14,16 +15,24 @@ namespace Athena.Binding
             return (T) data;
         }
 
-        public static async Task<object> Bind(this IReadOnlyCollection<EnvironmentDataBinder> environmentDataBinders, Type to,
-            IDictionary<string, object> environment, object defaultValue = null)
+        public static async Task<object> Bind(this IReadOnlyCollection<EnvironmentDataBinder> environmentDataBinders, 
+            Type to, IDictionary<string, object> environment, object defaultValue = null)
         {
+            Logger.Write(LogLevel.Debug, $"Binding to type {to}");
+            
             foreach (var dataBinder in environmentDataBinders)
             {
                 var result = await dataBinder.Bind(to, environment);
 
                 if (result.Success)
+                {
+                    Logger.Write(LogLevel.Debug, $"Binder found for type {to}");
+                    
                     return result.Result;
+                }
             }
+            
+            Logger.Write(LogLevel.Info, $"No binder found for type {to}");
 
             return defaultValue;
         }

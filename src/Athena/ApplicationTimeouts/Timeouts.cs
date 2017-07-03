@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Athena.Configuration;
+using Athena.Logging;
 using Athena.Processes;
 
 namespace Athena.ApplicationTimeouts
@@ -15,6 +16,8 @@ namespace Athena.ApplicationTimeouts
             if(CurrentTimeoutStore != null)
                 throw new InvalidOperationException("Can't use more then one timeout manager");
             
+            Logger.Write(LogLevel.Debug, $"Registering timeout store ({store.GetType()})");
+            
             CurrentTimeoutStore = store;
 
             return bootstrapper.UseProcess(new TimeoutManager(() => store, secondsToSleepBetweenPolls));
@@ -25,6 +28,8 @@ namespace Athena.ApplicationTimeouts
             if(CurrentTimeoutStore == null)
                 throw new InvalidOperationException("No timeout store defined");
 
+            Logger.Write(LogLevel.Debug, $"Requesting timeout at {at} ({message.GetType()})");
+            
             await CurrentTimeoutStore.Add(new TimeoutData(Guid.NewGuid(), message, at));
         }
     }

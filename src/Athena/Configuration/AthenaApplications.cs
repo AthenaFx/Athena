@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Athena.Logging;
 using Athena.PubSub;
 
 namespace Athena.Configuration
@@ -33,6 +34,8 @@ namespace Athena.Configuration
             if (string.IsNullOrEmpty(key))
                 key = typeof(TSetting).AssemblyQualifiedName;
 
+            Logger.Write(LogLevel.Debug, $"Getting settings {typeof(TSetting)} with key {key}");
+            
             return settings.ContainsKey(key) ? settings[key] as TSetting : null;
         }
 
@@ -49,6 +52,8 @@ namespace Athena.Configuration
                     $"There is no configuration part of type {typeof(TPart)} with key {key}");
             }
             
+            Logger.Write(LogLevel.Debug, $"Starting configuration for {typeof(TPart)} with key {key}");
+            
             return (PartConfiguration<TPart>) configuration;
         }
 
@@ -59,6 +64,8 @@ namespace Athena.Configuration
         {
             if (string.IsNullOrEmpty(key))
                 key = typeof(TPart).AssemblyQualifiedName;
+            
+            Logger.Write(LogLevel.Debug, $"Starting configuration for {typeof(TPart)} with key {key}");
 
             var partConfiguration = (PartConfiguration<TPart>) _partConfigurations.GetOrAdd(key,
                 x => new PartConfiguration<TPart>(this, key));
@@ -73,6 +80,8 @@ namespace Athena.Configuration
             if (string.IsNullOrEmpty(key))
                 key = typeof(TPart).AssemblyQualifiedName;
             
+            Logger.Write(LogLevel.Debug, $"Starting configuration for {typeof(TPart)} with key {key}");
+            
             var partConfiguration = (PartConfiguration<TPart>) _partConfigurations.GetOrAdd(key,
                 x => new PartConfiguration<TPart>(this, key));
 
@@ -83,6 +92,8 @@ namespace Athena.Configuration
             Func<TEvent, bool> filter = null)
             where TEvent : ShutdownEvent
         {
+            Logger.Write(LogLevel.Debug, $"Adding shutdown handler for {typeof(TEvent)}");
+            
             filter = filter ?? (x => true);
 
             _shutdowHandlers.Add(new Tuple<Type, Func<object, bool>, Func<object, AthenaContext, Task>>(typeof(TEvent),
@@ -106,6 +117,8 @@ namespace Athena.Configuration
         {
             if (_applicationBuilders.ContainsKey(name))
                 throw new InvalidOperationException($"There is already a application named {name}");
+            
+            Logger.Write(LogLevel.Debug, $"Defining application with name {name}");
 
             _applicationBuilders[name] = builder(new AppFunctionBuilder(this));
 
@@ -116,6 +129,8 @@ namespace Athena.Configuration
         {
             if (!_applicationBuilders.ContainsKey(name))
                 throw new InvalidOperationException($"There is no application named {name}");
+            
+            Logger.Write(LogLevel.Debug, $"Updating application \"{name}\"");
 
             _applicationBuilders[name] = builder(_applicationBuilders[name]);
 
@@ -124,11 +139,15 @@ namespace Athena.Configuration
 
         public IReadOnlyCollection<string> GetDefinedApplications()
         {
+            Logger.Write(LogLevel.Debug, $"Getting defined applications");
+            
             return _applicationBuilders.Keys.ToList();
         }
 
         public async Task Done(SetupEvent evnt)
         {
+            Logger.Write(LogLevel.Debug, $"{evnt} done");
+            
             await Task.WhenAll(_partConfigurations
                     .Select(x => x.Value.TrySetUp(evnt, this)))
                 .ConfigureAwait(false);
@@ -138,6 +157,8 @@ namespace Athena.Configuration
 
         public async Task<AthenaContext> Build()
         {
+            Logger.Write(LogLevel.Debug, $"Starting context build");
+            
             await Done(new BootstrapStarted(ApplicationName, Environment)).ConfigureAwait(false);
 
             await Done(new BeforeApplicationsCompilation()).ConfigureAwait(false);
@@ -151,6 +172,8 @@ namespace Athena.Configuration
 
             await Done(new BootstrapCompleted(ApplicationName, Environment, _timer.Elapsed, context))
                 .ConfigureAwait(false);
+            
+            Logger.Write(LogLevel.Debug, $"Context build finished");
 
             return context;
         }

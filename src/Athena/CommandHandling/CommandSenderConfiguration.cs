@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Athena.Binding;
 using Athena.Configuration;
+using Athena.Logging;
 using Athena.MetaData;
 using Athena.Resources;
 using Athena.Routing;
@@ -13,12 +14,22 @@ namespace Athena.CommandHandling
     public class CommandSenderConfiguration : AppFunctionDefinition
     {
         private readonly ICollection<Transaction> _transactions = new List<Transaction>();
+        private readonly ICollection<MetaDataSupplier> _metaDataSuppliers = new List<MetaDataSupplier>();
         
         public string Name { get; } = "commandhandler";
         
         public CommandSenderConfiguration HandleTransactionsWith(Transaction transaction)
         {
+            Logger.Write(LogLevel.Debug, $"Handling command transactions with {transaction}");
+            
             _transactions.Add(transaction);
+
+            return this;
+        }
+
+        public CommandSenderConfiguration SupplyMetaDataWith(MetaDataSupplier supplier)
+        {
+            _metaDataSuppliers.Add(supplier);
 
             return this;
         }
@@ -54,7 +65,7 @@ namespace Athena.CommandHandling
             return builder
                 .Last("HandleTransactions",
                     next => new HandleTransactions(next, _transactions.ToList()).Invoke)
-                .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
+                .Last("SupplyMetaData", next => new SupplyMetaData(next, _metaDataSuppliers.ToList()).Invoke)
                 .Last("RouteToResource", next => new RouteToResource(next, routers).Invoke)
                 .Last("EnsureEndpointExists", next => new EnsureEndpointExists(next, routeCheckers, x => 
                     throw new CommandHandlerNotFoundException(x.Get<object>("command").GetType())).Invoke)

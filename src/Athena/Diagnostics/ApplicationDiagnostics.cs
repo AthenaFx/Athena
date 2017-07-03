@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Reflection;
 using Athena.Configuration;
+using Athena.Logging;
 using Athena.PubSub;
 
 namespace Athena.Diagnostics
@@ -11,6 +12,8 @@ namespace Athena.Diagnostics
         public static PartConfiguration<DiagnosticsConfiguration> EnableDiagnostics(
             this AthenaBootstrapper bootstrapper)
         {
+            Logger.Write(LogLevel.Debug, $"Enabling diagnostics");
+            
             EventPublishing.Subscribe<SetupEvent>(async (evnt, context) =>
             {
                 var data = evnt
@@ -42,6 +45,8 @@ namespace Athena.Diagnostics
             return bootstrapper
                 .ConfigureWith<DiagnosticsConfiguration, ApplicationDefined>((conf, evnt, context) =>
                 {
+                    Logger.Write(LogLevel.Debug, $"Configuring diagnostics");
+                    
                     return context.UpdateApplication(evnt.Name,
                         builder => builder.WrapAllWith((next, nextItem) =>
                             new DiagnoseInnerBehavior(next, nextItem, conf.DataManager).Invoke));

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Athena.Binding;
+using Athena.Logging;
 using Athena.Routing;
 
 namespace Athena.Resources
@@ -27,10 +28,14 @@ namespace Athena.Resources
 
             if(methodResource == null)
                 return new ResourceExecutionResult(false, null);
+            
+            Logger.Write(LogLevel.Debug, $"Starting method resource execution {methodResource.Method.Name}");
 
             var instance = _getInstance(methodResource.Method.DeclaringType, environment);
 
             var result = await ExecuteMethod(methodResource.Method, instance, environment).ConfigureAwait(false);
+            
+            Logger.Write(LogLevel.Debug, $"Method resource executed {methodResource.Method.Name}");
 
             return new ResourceExecutionResult(true, result);
         }
@@ -46,6 +51,8 @@ namespace Athena.Resources
                 methodArguments.Add(await _environmentDataBinders.Bind(parameter.ParameterType, environment)
                     .ConfigureAwait(false));
             }
+            
+            Logger.Write(LogLevel.Debug, $"Collected {methodArguments.Count} method arguments");
 
             var methodResult = methodInfo.Invoke(instance, methodArguments.ToArray());
 

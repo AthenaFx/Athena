@@ -12,6 +12,7 @@ namespace Athena.EventStore.Projections
     {
         private readonly ICollection<Transaction> _transactions = new List<Transaction>();
         private readonly ICollection<EventStoreProjection> _projections = new List<EventStoreProjection>();
+        private readonly ICollection<MetaDataSupplier> _metaDataSuppliers = new List<MetaDataSupplier>();
         private EventSerializer _serializer = new JsonEventSerializer();
         private EventStoreConnectionString _connectionString 
             = new EventStoreConnectionString("Ip=127.0.0.1;Port=1113;UserName=admin;Password=changeit;");
@@ -21,6 +22,13 @@ namespace Athena.EventStore.Projections
         public ProjectionSettings HandleTransactionsWith(Transaction transaction)
         {
             _transactions.Add(transaction);
+
+            return this;
+        }
+
+        public ProjectionSettings SupplyMetaDataWith(MetaDataSupplier supplier)
+        {
+            _metaDataSuppliers.Add(supplier);
 
             return this;
         }
@@ -81,7 +89,7 @@ namespace Athena.EventStore.Projections
                 .Last("Retry", next => new Retry(next, 5, TimeSpan.FromSeconds(1), "Projection failed").Invoke)
                 .Last("HandleTransactions",
                     next => new HandleTransactions(next, _transactions.ToList()).Invoke)
-                .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
+                .Last("SupplyMetaData", next => new SupplyMetaData(next, _metaDataSuppliers.ToList()).Invoke)
                 .Last("ExecuteProjection", next => new ExecuteProjection(next).Invoke);
         }
     }

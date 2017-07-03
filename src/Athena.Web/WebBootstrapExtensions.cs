@@ -93,6 +93,38 @@ namespace Athena.Web
             return appConfiguration;
         }
 
+        public static PartConfiguration<WebApplicationRequestErrorSettings> OnError(
+            this PartConfiguration<WebApplicationSettings> settings)
+        {
+            var key = $"_web_application_{settings.Settings.Name}_error";
+
+            return settings.Child<WebApplicationRequestErrorSettings>(key);
+        }
+        
+        public static PartConfiguration<WebApplicationRequestNotFoundSettings> OnMissing(
+            this PartConfiguration<WebApplicationSettings> settings)
+        {
+            var key = $"_web_application_{settings.Settings.Name}_missing";
+
+            return settings.Child<WebApplicationRequestNotFoundSettings>(key);
+        }
+        
+        public static PartConfiguration<WebApplicationRequestUnAuthorizedSettings> OnUnAuthorized(
+            this PartConfiguration<WebApplicationSettings> settings)
+        {
+            var key = $"_web_application_{settings.Settings.Name}_unauthorized";
+
+            return settings.Child<WebApplicationRequestUnAuthorizedSettings>(key);
+        }
+        
+        public static PartConfiguration<WebApplicationRequestValidationErrorSettings> OnValidationFailure(
+            this PartConfiguration<WebApplicationSettings> settings)
+        {
+            var key = $"_web_application_{settings.Settings.Name}_invalid";
+
+            return settings.Child<WebApplicationRequestValidationErrorSettings>(key);
+        }
+
         public static WebApplicationSettings GetCurrentWebApplicationSettings(
             this IDictionary<string, object> environment)
         {

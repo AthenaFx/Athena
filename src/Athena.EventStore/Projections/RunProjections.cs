@@ -36,7 +36,7 @@ namespace Athena.EventStore.Projections
                 await StartProjection(projection, context, settings).ConfigureAwait(false);
         }
 
-        public Task Stop()
+        public Task Stop(AthenaContext context)
         {
             _running = false;
 

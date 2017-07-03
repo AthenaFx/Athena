@@ -1,22 +1,29 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using Athena.Configuration;
 
 namespace Athena.Logging
 {
     public static class Logger
     {
-        private static LogWriter _logWriter = new ConsoleLogWriter();
+        private static readonly ConcurrentBag<LogWriter> Writers = new ConcurrentBag<LogWriter>();
 
-        public static AthenaBootstrapper UseLogWriter(this AthenaBootstrapper bootstrapper, LogWriter logWriter)
+        public static AthenaBootstrapper LogWith(this AthenaBootstrapper bootstrapper, LogWriter logWriter)
         {
-            _logWriter = logWriter;
+            Writers.Add(logWriter);
 
             return bootstrapper;
         }
 
+        public static AthenaBootstrapper LogToConsole(this AthenaBootstrapper bootstrapper, LogLevel level)
+        {
+            return LogWith(bootstrapper, new ConsoleLogWriter(level));
+        }
+
         public static void Write(LogLevel level, string message, Exception exception = null)
         {
-            _logWriter.Write(level, message, exception);
+            foreach (var writer in Writers)
+                writer.Write(level, message, exception);
         }
     }
 }

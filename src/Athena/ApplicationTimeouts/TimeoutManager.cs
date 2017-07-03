@@ -27,6 +27,8 @@ namespace Athena.ApplicationTimeouts
             
             if(timeoutStore == null)
                 return Task.CompletedTask;
+
+            Logger.Write(LogLevel.Debug, $"Starting timeout manager");
             
             _tokenSource = new CancellationTokenSource();
 
@@ -35,7 +37,7 @@ namespace Athena.ApplicationTimeouts
             return Task.CompletedTask;
         }
 
-        public Task Stop()
+        public Task Stop(AthenaContext context)
         {
             _tokenSource?.Cancel();
             
@@ -64,6 +66,8 @@ namespace Athena.ApplicationTimeouts
 
             while (!token.IsCancellationRequested)
             {
+                Logger.Write(LogLevel.Debug, $"Polling for timeouts");
+                
                 if (nextRetrieval > DateTime.UtcNow)
                 {
                     await Task.Delay(TimeSpan.FromSeconds(_secondsToSleepBetweenPolls), token).ConfigureAwait(false);

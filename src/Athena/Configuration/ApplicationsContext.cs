@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Athena.Logging;
 using Athena.PubSub;
 
 namespace Athena.Configuration
@@ -39,23 +40,33 @@ namespace Athena.Configuration
         {
             if (string.IsNullOrEmpty(key))
                 key = typeof(TSetting).AssemblyQualifiedName;
+            
+            Logger.Write(LogLevel.Debug, $"Getting settings {typeof(TSetting)} with key {key}");
 
             return _settings.ContainsKey(key) ? _settings[key] as TSetting : null;
         }
 
         public async Task Execute(string application, IDictionary<string, object> environment)
         {
+            Logger.Write(LogLevel.Debug, $"Executing application {application}");
+            
             using (environment.EnterApplication(this, application))
                 await _applications[application](environment).ConfigureAwait(false);
         }
 
-        public Task ShutDown()
+        public async Task ShutDown()
         {
-            return Done(new ShutdownStarted(ApplicationName, Environment));
+            Logger.Write(LogLevel.Debug, $"Starting shutdown of application");
+            
+            await Done(new ShutdownStarted(ApplicationName, Environment));
+            
+            Logger.Write(LogLevel.Debug, $"Applications shut down");
         }
         
         private async Task Done(ShutdownEvent evnt)
         {
+            Logger.Write(LogLevel.Debug, $"{evnt} done");
+            
             foreach (var type in evnt.GetType().GetParentTypesFor())
             {
                 var subscriptions = _shutdownHandlers.Where(x => x.Item1 == type && x.Item2(evnt)).ToList();

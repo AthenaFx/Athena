@@ -1,18 +1,21 @@
-﻿using System;
-using Athena.Configuration;
+﻿using Athena.Configuration;
 using Athena.Processes;
-using Consul;
+using Logger = Athena.Logging.Logger;
+using LogLevel = Athena.Logging.LogLevel;
 
 namespace Athena.Consul.Consensus
 {
     public static class BootstrapperExtensions
     {
-        public static AthenaBootstrapper UseConsulConsensus(this AthenaBootstrapper bootstrapper, 
-            Func<ConsulClient> getClient = null)
+        public static PartConfiguration<ConsulLeaderElectionSettings> UseConsulConsensus(
+            this AthenaBootstrapper bootstrapper)
         {
-            getClient = getClient ?? (() => new ConsulClient());
-            
-            return bootstrapper.UseProcess(new LeaderElector(bootstrapper.ApplicationName, getClient));
+            Logger.Write(LogLevel.Debug, $"Enabling consul leader election");
+
+            return bootstrapper
+                .UseProcess(new LeaderElector())
+                .ConfigureWith<ConsulLeaderElectionSettings>()
+                .Configure(x => x.WithName(bootstrapper.ApplicationName));
         }
     }
 }

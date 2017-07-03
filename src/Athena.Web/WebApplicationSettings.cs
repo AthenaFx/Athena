@@ -21,6 +21,7 @@ namespace Athena.Web
         private readonly ICollection<Transaction> _transactions = new List<Transaction>();
         private readonly ICollection<ValidateRouteResult> _validators = new List<ValidateRouteResult>();
         private readonly ICollection<Authorizer> _authorizers = new List<Authorizer>();
+        private readonly ICollection<MetaDataSupplier> _metaDataSuppliers = new List<MetaDataSupplier>();
         private IdentityFinder _identityFinder = new NullIdentityFinder();
 
         private Func<WebApplicationSettings, AthenaBootstrapper, IReadOnlyCollection<Route>> _buildRoutes
@@ -35,6 +36,13 @@ namespace Athena.Web
         internal WebApplicationSettings WithName(string name)
         {
             Name = name;
+
+            return this;
+        }
+
+        public WebApplicationSettings SupplyMetaDataWith(MetaDataSupplier supplier)
+        {
+            _metaDataSuppliers.Add(supplier);
 
             return this;
         }
@@ -141,7 +149,7 @@ namespace Athena.Web
                 .Last("MakeSureUrlIsUnique", next => new MakeSureUrlIsUnique(next).Invoke)
                 .Last("HandleTransactions",
                     next => new HandleTransactions(next, _transactions.ToList()).Invoke)
-                .Last("SupplyMetaData", next => new SupplyMetaData(next).Invoke)
+                .Last("SupplyMetaData", next => new SupplyMetaData(next, _metaDataSuppliers.ToList()).Invoke)
                 .Last("RouteToResource",
                     next => new RouteToResource(next, routers).Invoke)
                 .Last("EnsureEndpointExists", next => new EnsureEndpointExists(next, routeCheckers, async environment => 

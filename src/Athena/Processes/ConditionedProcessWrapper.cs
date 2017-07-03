@@ -1,6 +1,6 @@
 using System;
 using System.Threading.Tasks;
-using Athena.Configuration;
+using Athena.Logging;
 
 namespace Athena.Processes
 {
@@ -20,6 +20,8 @@ namespace Athena.Processes
 
         public async Task Start(AthenaContext context)
         {
+            Logger.Write(LogLevel.Debug, $"Starting conditional process {_inner}");
+            
             _started = true;
 
             if (_shouldRun && !_isRunning)
@@ -30,13 +32,15 @@ namespace Athena.Processes
             }
         }
 
-        public async Task Stop()
+        public async Task Stop(AthenaContext context)
         {
+            Logger.Write(LogLevel.Debug, $"Stopping conditional process {_inner}");
+            
             _started = false;
 
             if (_isRunning)
             {
-                await _inner.Stop().ConfigureAwait(false);
+                await _inner.Stop(context).ConfigureAwait(false);
 
                 _isRunning = false;
             }
@@ -58,7 +62,7 @@ namespace Athena.Processes
             }
             else if(!_shouldRun && _isRunning)
             {
-                await _inner.Stop().ConfigureAwait(false);
+                await _inner.Stop(context).ConfigureAwait(false);
 
                 _isRunning = false;
             }

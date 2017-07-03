@@ -6,7 +6,7 @@ namespace Athena.PubSub
     public interface EventPublisher
     {
         Task Publish(object evnt, SettingsContext context);
-        EventSubscription Subscribe<TEvent>(Func<TEvent, SettingsContext, Task> subscription, string id = null);
+        EventSubscription Subscribe<TEvent>(Func<TEvent, SettingsContext, Task> subscription, string id);
         void UnSubscribe(string id);
     }
 }

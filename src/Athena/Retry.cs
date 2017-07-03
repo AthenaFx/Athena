@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Athena.Logging;
 
 namespace Athena
 {
@@ -33,12 +34,19 @@ namespace Athena
             {
                 try
                 {
+                    Logger.Write(LogLevel.Debug,
+                        $"Starting try #{tries + 1} for request {environment.GetRequestId()} ({environment.GetCurrentApplication()})");
+                    
                     await _next(environment).ConfigureAwait(false);
 
                     return;
                 }
                 catch (Exception ex)
                 {
+                    Logger.Write(LogLevel.Info,
+                        $"Try #{tries + 1} failed for request {environment.GetRequestId()} ({environment.GetCurrentApplication()})",
+                        ex);
+                    
                     lastException = ex;
                 }
 
@@ -48,7 +56,13 @@ namespace Athena
             }
 
             if (lastException != null)
+            {
+                Logger.Write(LogLevel.Info,
+                    $"All tries failed for request {environment.GetRequestId()} ({environment.GetCurrentApplication()})",
+                    lastException);
+                
                 throw new RetryException(_retryTimes, _description, lastException);
+            }
         }
     }
 }

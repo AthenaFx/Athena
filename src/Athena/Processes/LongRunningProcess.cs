@@ -6,6 +6,6 @@ namespace Athena.Processes
     public interface LongRunningProcess
     {
         Task Start(AthenaContext context);
-        Task Stop();
+        Task Stop(AthenaContext context);
     }
 }

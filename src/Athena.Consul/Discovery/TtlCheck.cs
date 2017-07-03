@@ -1,7 +1,9 @@
 ﻿using System.Linq;
 using Athena.Configuration;
+using Athena.Logging;
 using Athena.Processes;
 using Consul;
+using LogLevel = Athena.Logging.LogLevel;
 
 namespace Athena.Consul.Discovery
 {
@@ -9,10 +11,14 @@ namespace Athena.Consul.Discovery
     {
         public static PartConfiguration<ConsulTtlCheckSettings> UseConsulTtlCheck(this AthenaBootstrapper bootstrapper)
         {
+            Logger.Write(LogLevel.Debug, $"Adding consul ttl check");
+            
             return bootstrapper
                 .UseProcess(new SendTtlDataToConsul())
                 .ConfigureWith<ConsulTtlCheckSettings, BootstrapCompleted>(async (config, evnt, context) =>
                 {
+                    Logger.Write(LogLevel.Debug, $"Configuring consul ttl check");
+                    
                     await config.CLient.Agent.ServiceRegister(new AgentServiceRegistration
                     {
                         Name = config.ApplicationName,

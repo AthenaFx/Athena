@@ -1,6 +1,8 @@
 using System.Linq;
 using Athena.Configuration;
+using Athena.Logging;
 using Consul;
+using LogLevel = Athena.Logging.LogLevel;
 
 namespace Athena.Consul.Discovery
 {
@@ -8,9 +10,13 @@ namespace Athena.Consul.Discovery
     {
         public static AthenaBootstrapper UseConsulHttpCheck(this AthenaBootstrapper bootstrapper, string url)
         {
+            Logger.Write(LogLevel.Debug, $"Adding consul http check");
+            
             return bootstrapper
                 .ConfigureWith<ConsulHttpCheckSettings, BootstrapCompleted>(async (config, evnt, context) =>
                 {
+                    Logger.Write(LogLevel.Debug, $"Configuring consul http check");
+                    
                     await config.CLient.Agent.ServiceRegister(new AgentServiceRegistration
                     {
                         Name = config.ApplicationName,

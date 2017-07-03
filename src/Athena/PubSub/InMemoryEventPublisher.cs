@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Athena.Logging;
 
 namespace Athena.PubSub
 {
@@ -21,13 +22,10 @@ namespace Athena.PubSub
             }
         }
 
-        public EventSubscription Subscribe<TEvent>(Func<TEvent, SettingsContext, Task> subscription, string id = null)
+        public EventSubscription Subscribe<TEvent>(Func<TEvent, SettingsContext, Task> subscription, string id)
         {
             var type = typeof(TEvent);
-            
-            if(string.IsNullOrEmpty(id))
-                id = Guid.NewGuid().ToString();
-            
+
             var newSubscription = new EventSubscription((evnt, context) => subscription((TEvent) evnt, context), 
                 UnSubscribe, id, type);
 

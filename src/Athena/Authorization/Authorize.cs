@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Athena.Logging;
 
 namespace Athena.Authorization
 {
@@ -25,6 +26,8 @@ namespace Athena.Authorization
 
         public async Task Invoke(IDictionary<string, object> environment)
         {
+            Logger.Write(LogLevel.Debug, $"Authorizing request: {environment.GetRequestId()}");
+            
             var identity = await _identityFinder.FindIdentityFor(environment).ConfigureAwait(false);
             
             var unAuthorized = (await Task.WhenAll(_authorizers
@@ -34,10 +37,14 @@ namespace Athena.Authorization
 
             if (unAuthorized)
             {
+                Logger.Write(LogLevel.Debug, $"Unauthorized request {identity?.Name ?? ""} {environment.GetRequestId()}");
+                
                 await _onUnAuthorized(environment).ConfigureAwait(false);
                 
                 return;
             }
+            
+            Logger.Write(LogLevel.Debug, $"Request, {environment.GetRequestId()}, authorized");
 
             await _next(environment);
         }

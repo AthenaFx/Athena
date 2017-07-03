@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Athena.Configuration;
+using Athena.Logging;
 
 namespace Athena.CommandHandling
 {
@@ -9,6 +10,8 @@ namespace Athena.CommandHandling
     {
         public static Task SendCommand<TCommand>(this AthenaContext context, TCommand command)
         {
+            Logger.Write(LogLevel.Debug, $"Sending command {typeof(TCommand)}");
+            
             return context.Execute("commandhandler", new Dictionary<string, object>
             {
                 ["command"] = command
@@ -25,8 +28,12 @@ namespace Athena.CommandHandling
         public static PartConfiguration<CommandSenderConfiguration> EnableCommandSender(
             this AthenaBootstrapper bootstrapper)
         {
+            Logger.Write(LogLevel.Debug, $"Enabling command sender");
+            
             return bootstrapper.ConfigureWith<CommandSenderConfiguration>((conf, context) =>
             {
+                Logger.Write(LogLevel.Debug, $"Configuring command sender");
+                
                 context.DefineApplication(conf.Name, conf.GetApplicationBuilder());
                 
                 return Task.CompletedTask;

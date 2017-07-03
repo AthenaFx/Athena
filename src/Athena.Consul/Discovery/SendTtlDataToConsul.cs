@@ -14,14 +14,22 @@ namespace Athena.Consul.Discovery
         public Task Start(AthenaContext context)
         {
             _cancellationTokenSource = new CancellationTokenSource();
+
+            var settings = context.GetSetting<ConsulTtlCheckSettings>();
             
-            StartSendingTtl(context.GetSetting<ConsulTtlCheckSettings>());
+            StartSendingTtl(settings);
+            
+            Logger.Write(LogLevel.Debug, $"Starting consul ttl check {settings.CheckId} for {settings.Id}");
             
             return Task.CompletedTask;
         }
 
-        public Task Stop()
+        public Task Stop(AthenaContext context)
         {
+            var settings = context.GetSetting<ConsulTtlCheckSettings>();
+            
+            Logger.Write(LogLevel.Debug, $"Stopping consul ttl check {settings.CheckId} for {settings.Id}");
+            
             _cancellationTokenSource?.Cancel();
             
             return Task.CompletedTask;

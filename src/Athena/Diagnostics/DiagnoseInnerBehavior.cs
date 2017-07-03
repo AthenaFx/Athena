@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Athena.Logging;
 
 namespace Athena.Diagnostics
 {
@@ -22,6 +23,8 @@ namespace Athena.Diagnostics
 
         public async Task Invoke(IDictionary<string, object> environment)
         {
+            Logger.Write(LogLevel.Debug, $"Starting to diagnose {_nextItem}");
+            
             var timer = Stopwatch.StartNew();
 
             await _next(environment).ConfigureAwait(false);
@@ -35,6 +38,8 @@ namespace Athena.Diagnostics
                     ["Middleware"] = _nextItem,
                     ["ExecutionTime"] = timer.Elapsed.ToString()
                 }));
+            
+            Logger.Write(LogLevel.Debug, $"Diagnose of {_nextItem} finished");
         }
     }
 }
