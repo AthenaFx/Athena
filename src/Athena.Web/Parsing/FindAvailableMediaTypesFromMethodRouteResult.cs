@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -11,13 +10,11 @@ namespace Athena.Web.Parsing
     public class FindAvailableMediaTypesFromMethodRouteResult : FindMediaTypesForRequest
     {
         private readonly IReadOnlyCollection<EnvironmentDataBinder> _environmentDataBinders;
-        private readonly Func<Type, object> _getInstance;
 
-        public FindAvailableMediaTypesFromMethodRouteResult(IReadOnlyCollection<EnvironmentDataBinder> environmentDataBinders,
-            Func<Type, object> getInstance = null)
+        public FindAvailableMediaTypesFromMethodRouteResult(
+            IReadOnlyCollection<EnvironmentDataBinder> environmentDataBinders)
         {
             _environmentDataBinders = environmentDataBinders;
-            _getInstance = getInstance ?? Activator.CreateInstance;
         }
 
         public async Task<IReadOnlyCollection<string>> FindAvailableFor(IDictionary<string, object> environment)
@@ -27,10 +24,9 @@ namespace Athena.Web.Parsing
             if(methodRouterResult == null)
                 return new List<string>();
 
-            var instance = _getInstance(methodRouterResult.Method.DeclaringType);
-
             return ((await ExecuteMethod($"FindAvailableMediaTypesFor{methodRouterResult.Method.Name}",
-                        instance, environment, new List<string>()).ConfigureAwait(false)) as IEnumerable<string> ?? new List<string>{"*/*"})
+                        methodRouterResult.Instance, environment, new List<string>()).ConfigureAwait(false)) 
+                    as IEnumerable<string> ?? new List<string>{"*/*"})
                 .ToList();
         }
 

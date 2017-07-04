@@ -27,6 +27,8 @@ namespace Athena.Web
             new FindCacheDataForStaticFileRequest()
         };
         private IdentityFinder _identityFinder = new NullIdentityFinder();
+        private Func<Type, IDictionary<string, object>, object> _createHandlerInstanceWith = (x, y) => 
+            Activator.CreateInstance(x);
 
         private Func<WebApplicationSettings, AthenaBootstrapper, IReadOnlyCollection<Route>> _buildRoutes
             = (settings, bootstrapper) => DefaultRouteConventions
@@ -40,6 +42,14 @@ namespace Athena.Web
         internal WebApplicationSettings WithName(string name)
         {
             Name = name;
+
+            return this;
+        }
+
+        public WebApplicationSettings CreateHandlerInstanceWith(
+            Func<Type, IDictionary<string, object>, object> createInstance)
+        {
+            _createHandlerInstanceWith = createInstance;
 
             return this;
         }
@@ -112,7 +122,7 @@ namespace Athena.Web
 
             var routers = new List<EnvironmentRouter>
             {
-                new UrlPatternRouter(routes, new DefaultRoutePatternMatcher()),
+                new UrlPatternRouter(routes, new DefaultRoutePatternMatcher(), _createHandlerInstanceWith),
                 new StaticFileRouter(fileHandlers)
             };
 
@@ -146,6 +156,10 @@ namespace Athena.Web
                 new CheckIfMethodResourceExists(binders)
             };
 
+            var authorizers = _authorizers.ToList();
+            
+            authorizers.Add(new MethodRouteConventionalAuthorizer(binders));
+
             return builder.First("HandleExceptions", next => new HandleExceptions(next,
                     async (exception, environment) =>
                     {
@@ -171,13 +185,13 @@ namespace Athena.Web
                 .ContinueWith("UseCorrectOutputParser",
                     next => new UseCorrectOutputParser(next, mediaTypeFinders, outputParsers).Invoke,
                     () => outputParsers.GetDiagnosticsData())
-                .ContinueWith("Authorize", next => new Authorize(next, _authorizers.ToList(), _identityFinder,
+                .ContinueWith("Authorize", next => new Authorize(next, authorizers, _identityFinder,
                     async environment =>
                     {
                         var context = environment.GetAthenaContext();
 
                         await context.Execute($"{Name}_unauthorized", environment).ConfigureAwait(false);
-                    }).Invoke, () => _authorizers.GetDiagnosticsData())
+                    }).Invoke, () => authorizers.GetDiagnosticsData())
                 .ContinueWith("ValidateParameters",
                     next => new ValidateParameters(next, _validators.ToList(), async environment =>
                     {

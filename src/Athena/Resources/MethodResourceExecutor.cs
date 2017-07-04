@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 using Athena.Binding;
@@ -12,13 +10,10 @@ namespace Athena.Resources
     public class MethodResourceExecutor : ResourceExecutor
     {
         private readonly IReadOnlyCollection<EnvironmentDataBinder> _environmentDataBinders;
-        private readonly Func<Type, IDictionary<string, object>, object> _getInstance;
 
-        public MethodResourceExecutor(IReadOnlyCollection<EnvironmentDataBinder> environmentDataBinders,
-            Func<Type, IDictionary<string, object>, object> getInstance = null)
+        public MethodResourceExecutor(IReadOnlyCollection<EnvironmentDataBinder> environmentDataBinders)
         {
             _environmentDataBinders = environmentDataBinders;
-            _getInstance = getInstance ?? ((x, y) => Activator.CreateInstance(x));
         }
 
         public async Task<ResourceExecutionResult> Execute(RouterResult resource, 
@@ -31,9 +26,8 @@ namespace Athena.Resources
             
             Logger.Write(LogLevel.Debug, $"Starting method resource execution {methodResource.Method.Name}");
 
-            var instance = _getInstance(methodResource.Method.DeclaringType, environment);
-
-            var result = await ExecuteMethod(methodResource.Method, instance, environment).ConfigureAwait(false);
+            var result = await ExecuteMethod(methodResource.Method, methodResource.Instance, environment)
+                .ConfigureAwait(false);
             
             Logger.Write(LogLevel.Debug, $"Method resource executed {methodResource.Method.Name}");
 

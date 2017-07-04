@@ -10,8 +10,12 @@ namespace Athena.EventStore.StreamSubscriptions
 {
     public class RouteEventToMethod : ToMethodRouter
     {
-        private RouteEventToMethod(IReadOnlyCollection<MethodInfo> availableMethods) : base(availableMethods)
+        private readonly Func<Type, IDictionary<string, object>, object> _createInstance;
+        
+        private RouteEventToMethod(IReadOnlyCollection<MethodInfo> availableMethods, 
+            Func<Type, IDictionary<string, object>, object> createInstance) : base(availableMethods)
         {
+            _createInstance = createInstance;
         }
 
         protected override MethodInfo Route(IDictionary<string, object> environment, 
@@ -25,7 +29,13 @@ namespace Athena.EventStore.StreamSubscriptions
                     .Any(y => y.ParameterType == evnt.Data.GetType()));
         }
 
-        public static RouteEventToMethod New(Func<MethodInfo, bool> filter, IEnumerable<Assembly> assemblies)
+        protected override object CreateInstance(Type type, IDictionary<string, object> environment)
+        {
+            return _createInstance(type, environment);
+        }
+
+        public static RouteEventToMethod New(Func<MethodInfo, bool> filter, IEnumerable<Assembly> assemblies,
+            Func<Type, IDictionary<string, object>, object> createInstance)
         {
             var methods = assemblies
                 .SelectMany(x => x.GetTypes())
@@ -33,7 +43,7 @@ namespace Athena.EventStore.StreamSubscriptions
                 .Where(filter)
                 .ToList();
 
-            return new RouteEventToMethod(new ReadOnlyCollection<MethodInfo>(methods));
+            return new RouteEventToMethod(new ReadOnlyCollection<MethodInfo>(methods), createInstance);
         }
     }
 }

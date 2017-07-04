@@ -10,11 +10,14 @@ namespace Athena.Web.Routing
     {
         private readonly IReadOnlyCollection<Route> _routes;
         private readonly RoutePatternMatcher _routePatternMatcher;
+        private readonly Func<Type, IDictionary<string, object>, object> _createInstance;
 
-        public UrlPatternRouter(IReadOnlyCollection<Route> routes, RoutePatternMatcher routePatternMatcher)
+        public UrlPatternRouter(IReadOnlyCollection<Route> routes, RoutePatternMatcher routePatternMatcher, 
+            Func<Type, IDictionary<string, object>, object> createInstance)
         {
             _routes = routes;
             _routePatternMatcher = routePatternMatcher;
+            _createInstance = createInstance;
         }
 
         public Task<RouterResult> Route(IDictionary<string, object> environment)
@@ -33,7 +36,8 @@ namespace Athena.Web.Routing
                 .FirstOrDefault(x => x.Match.IsMatch);
 
             return Task.FromResult<RouterResult>(route?.Route?.Destination != null ? new MethodResourceRouterResult(
-                route.Route.Destination, route.Match.Parameters) : null);
+                route.Route.Destination, _createInstance(route.Route.Destination.DeclaringType, environment), 
+                route.Match.Parameters) : null);
         }
     }
 }

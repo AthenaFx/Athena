@@ -30,6 +30,16 @@ namespace Athena.EventStore.StreamSubscriptions
         private EventStoreConnectionString _connectionString 
             = new EventStoreConnectionString("Ip=127.0.0.1;Port=1113;UserName=admin;Password=changeit;");
         
+        private Func<Type, IDictionary<string, object>, object> _createInstance = (x, y) => Activator.CreateInstance(x);
+        
+        public RunStreamPersistentSubscribers CreateHandlerInstanceWith(
+            Func<Type, IDictionary<string, object>, object> createInstance)
+        {
+            _createInstance = createInstance;
+
+            return this;
+        }
+        
         public RunStreamPersistentSubscribers HandleTransactionsWith(Transaction transaction)
         {
             _transactions.Add(transaction);
@@ -88,7 +98,8 @@ namespace Athena.EventStore.StreamSubscriptions
             {
                 RouteEventToMethod.New(x => x.Name == "Subscribe"
                                             && (x.ReturnType == typeof(void) || x.ReturnType == typeof(Task))
-                                            && x.GetParameters().Length == 1, builder.Bootstrapper.ApplicationAssemblies)
+                                            && x.GetParameters().Length == 1, builder.Bootstrapper.ApplicationAssemblies,
+                    _createInstance)
             };
 
             var binders = new List<EnvironmentDataBinder>

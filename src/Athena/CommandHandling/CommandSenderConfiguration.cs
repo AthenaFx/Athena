@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -15,6 +16,8 @@ namespace Athena.CommandHandling
     {
         private readonly ICollection<Transaction> _transactions = new List<Transaction>();
         private readonly ICollection<MetaDataSupplier> _metaDataSuppliers = new List<MetaDataSupplier>();
+        private Func<Type, IDictionary<string, object>, object> _createHandlerInstanceWith = 
+            (x, y) => Activator.CreateInstance(x);
         
         public string Name { get; } = "commandhandler";
         
@@ -33,6 +36,14 @@ namespace Athena.CommandHandling
 
             return this;
         }
+
+        public CommandSenderConfiguration CreateHandlerInstanceWith(
+            Func<Type, IDictionary<string, object>, object> createHandlerInstance)
+        {
+            _createHandlerInstanceWith = createHandlerInstance;
+
+            return this;
+        }
         
         protected override AppFunctionBuilder DefineDefaultApplication(AppFunctionBuilder builder)
         {
@@ -42,7 +53,7 @@ namespace Athena.CommandHandling
                                               && x.Name == "Handle"
                                               && (x.ReturnType == typeof(void) || x.ReturnType == typeof(Task))
                                               && x.GetParameters().Length > 0, 
-                    builder.Bootstrapper.ApplicationAssemblies)
+                    builder.Bootstrapper.ApplicationAssemblies, _createHandlerInstanceWith)
             };
 
             var binders = new List<EnvironmentDataBinder>

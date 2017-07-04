@@ -5,28 +5,26 @@ using System.Threading.Tasks;
 using Athena.Binding;
 using Athena.Routing;
 
-namespace Athena
+namespace Athena.Authorization
 {
-    public class CheckIfMethodResourceExists : CheckIfResourceExists
+    public class MethodRouteConventionalAuthorizer : RouteAuthorizer<MethodResourceRouterResult>
     {
         private readonly IReadOnlyCollection<EnvironmentDataBinder> _environmentDataBinders;
 
-        public CheckIfMethodResourceExists(IReadOnlyCollection<EnvironmentDataBinder> environmentDataBinders)
+        public MethodRouteConventionalAuthorizer(IReadOnlyCollection<EnvironmentDataBinder> environmentDataBinders)
         {
             _environmentDataBinders = environmentDataBinders;
         }
 
-        public async Task<bool> Exists(RouterResult result, IDictionary<string, object> environment)
+        protected override async Task<AuthorizationResult> Authorize(MethodResourceRouterResult routerResult, 
+            AuthenticationIdentity identity, IDictionary<string, object> environment)
         {
-            var methodRouterResult = result as MethodResourceRouterResult;
+            var authorized = await ExecuteMethod($"Authorize{routerResult.Method.Name}",
+                routerResult.Instance, environment).ConfigureAwait(false);
 
-            if(methodRouterResult == null)
-                return true;
-
-            return await ExecuteMethod($"{methodRouterResult.Method.Name}Exists",
-                methodRouterResult.Instance, environment).ConfigureAwait(false);
+            return authorized ? AuthorizationResult.Allowed : AuthorizationResult.Denied;
         }
-
+        
         protected virtual async Task<bool> ExecuteMethod(string methodName, object instance,
             IDictionary<string, object> environment)
         {
