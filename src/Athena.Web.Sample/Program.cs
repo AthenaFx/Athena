@@ -26,7 +26,7 @@ namespace Athena.Web.Sample
                 .UsingWebApplication()
                 .EnableCommandSender()
                 .EnableDiagnostics()
-                .WithWebUi()
+                    .WithWebUi()
                 .Build();
             
             var host = new WebHostBuilder()

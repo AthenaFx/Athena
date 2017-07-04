@@ -7,7 +7,7 @@ namespace Athena.Authorization
     {
         public Task<AuthenticationIdentity> FindIdentityFor(IDictionary<string, object> environment)
         {
-            return Task.FromResult(new AuthenticationIdentity(null, new Dictionary<string, string>()));
+            return Task.FromResult<AuthenticationIdentity>(null);
         }
     }
 }

@@ -1,23 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Athena.Routing;
 
 namespace Athena.Authorization
 {
-    public class RouteAuthorizer<TRouterResult> : Authorizer where TRouterResult : RouterResult
+    public abstract class RouteAuthorizer<TRouterResult> : Authorizer where TRouterResult : RouterResult
     {
-        private readonly 
-            Func<RouterResult, AuthenticationIdentity, IDictionary<string, object>, Task<AuthorizationResult>> 
-            _authorize;
-
-        public RouteAuthorizer(
-            Func<RouterResult, AuthenticationIdentity, IDictionary<string, object>, Task<AuthorizationResult>> 
-                authorize)
-        {
-            _authorize = authorize;
-        }
-
         public async Task<AuthorizationResult> IsAuthorized(IDictionary<string, object> environment, 
             AuthenticationIdentity authenticationIdentity)
         {
@@ -26,8 +14,11 @@ namespace Athena.Authorization
             if(!(routerResult is TRouterResult))
                 return AuthorizationResult.NotApplied;
 
-            return await _authorize((TRouterResult) routerResult, authenticationIdentity, environment)
+            return await Authorize((TRouterResult) routerResult, authenticationIdentity, environment)
                 .ConfigureAwait(false);
         }
+
+        protected abstract Task<AuthorizationResult> Authorize(TRouterResult routerResult,
+            AuthenticationIdentity identity, IDictionary<string, object> environment);
     }
 }
