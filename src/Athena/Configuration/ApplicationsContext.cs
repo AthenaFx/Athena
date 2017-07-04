@@ -14,17 +14,16 @@ namespace Athena.Configuration
     internal class ApplicationsContext : AthenaContext
     {
         private readonly IReadOnlyDictionary<string, AppFunc> _applications;
-
-        private IReadOnlyCollection<Func<AthenaContext, Task>> _shutdownHandlers;
-        
-        private IReadOnlyDictionary<string, object> _settings;
+        private readonly IReadOnlyDictionary<string, PartConfiguration> _configurations;
         
         private ApplicationsContext(IReadOnlyCollection<Assembly> applicationAssemblies, string applicationName, 
-            string environment, IReadOnlyDictionary<string, AppFunc> applications)
+            string environment, IReadOnlyDictionary<string, AppFunc> applications, 
+            IReadOnlyDictionary<string, PartConfiguration> configurations)
         {
             ApplicationAssemblies = applicationAssemblies;
             ApplicationName = applicationName;
             _applications = applications;
+            _configurations = configurations;
             Environment = environment;
         }
 
@@ -32,12 +31,10 @@ namespace Athena.Configuration
             string applicationName, string environment, IReadOnlyDictionary<string, AppFunc> applications, 
             IReadOnlyDictionary<string, PartConfiguration> configurations)
         {
-            var context = new ApplicationsContext(applicationAssemblies, applicationName, environment, applications);
+            var context = new ApplicationsContext(applicationAssemblies, applicationName, environment, applications,
+                configurations);
 
-            context._shutdownHandlers = await Task.WhenAll(configurations
-                .Select(x => x.Value.RunStartup(context))).ConfigureAwait(false);
-
-            context._settings = configurations.ToDictionary(x => x.Key, x => x.Value.GetPart());
+            await Task.WhenAll(configurations.Select(x => x.Value.Startup(context))).ConfigureAwait(false);
 
             return context;
         }
@@ -53,7 +50,7 @@ namespace Athena.Configuration
             
             Logger.Write(LogLevel.Debug, $"Getting settings {typeof(TSetting)} with key {key}");
 
-            return _settings.ContainsKey(key) ? _settings[key] as TSetting : null;
+            return _configurations.ContainsKey(key) ? _configurations[key].GetPart() as TSetting : null;
         }
 
         public async Task Execute(string application, IDictionary<string, object> environment)
@@ -82,7 +79,7 @@ namespace Athena.Configuration
             
             await EventPublishing.Publish(new ShutdownStarted(ApplicationName, Environment));
 
-            await Task.WhenAll(_shutdownHandlers.Select(x => x(this))).ConfigureAwait(false);
+            await Task.WhenAll(_configurations.Select(x => x.Value.Shutdown(this))).ConfigureAwait(false);
             
             Logger.Write(LogLevel.Debug, "Applications shut down");
         }

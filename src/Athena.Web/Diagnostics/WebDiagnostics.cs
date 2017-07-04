@@ -15,7 +15,7 @@ namespace Athena.Web.Diagnostics
             Logger.Write(LogLevel.Debug, $"Enabling UI for diagnostics");
             
             return config
-                .UsingWebApplication("diagnostics_web")
+                .UsingWebApplication("web_diagnostics")
                 .Configure(x => x.WithBaseUrl("_diagnostics").BuildRoutesWith((settings, bootstrapper) =>
                     DefaultRouteConventions.BuildRoutes(y => $"{settings.BaseUrl}/{y}",
                         y => y.Namespace == "Athena.Web.Diagnostics.Endpoints.Home",

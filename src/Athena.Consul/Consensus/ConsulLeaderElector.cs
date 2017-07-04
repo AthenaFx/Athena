@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Athena.Consensus;
 using Athena.Logging;
 using Athena.PubSub;
 using Consul;
@@ -12,7 +11,7 @@ namespace Athena.Consul.Consensus
     public class ConsulLeaderElector
     {
         private CancellationTokenSource _cancellationTokenSource;
-        private NodeRole _currentRole = NodeRole.Follower;
+        public NodeRole CurrentRole { get; private set; } = NodeRole.Candidate;
         private IDistributedLock _lock;
         
         public ConsulClient Client { get; private set; } = new ConsulClient();
@@ -78,12 +77,12 @@ namespace Athena.Consul.Consensus
             {
                 if (!consulLock.IsHeld)
                 {
-                    if (_currentRole != NodeRole.Follower)
+                    if (CurrentRole != NodeRole.Follower)
                     {
                         Logger.Write(LogLevel.Debug, $"Node became follower of {Name}");
                         
                         await EventPublishing.Publish(new NodeRoleTransitioned(NodeRole.Follower)).ConfigureAwait(false);
-                        _currentRole = NodeRole.Follower;
+                        CurrentRole = NodeRole.Follower;
                     }
 
                     await consulLock.Acquire(cancellationToken).ConfigureAwait(false);
@@ -91,12 +90,12 @@ namespace Athena.Consul.Consensus
 
                 while (!cancellationToken.IsCancellationRequested && consulLock.IsHeld)
                 {
-                    if (_currentRole != NodeRole.Leader)
+                    if (CurrentRole != NodeRole.Leader)
                     {
                         Logger.Write(LogLevel.Debug, $"Node became leader of {Name}");
                         
                         await EventPublishing.Publish(new NodeRoleTransitioned(NodeRole.Leader)).ConfigureAwait(false);
-                        _currentRole = NodeRole.Leader;
+                        CurrentRole = NodeRole.Leader;
                     }
 
                     await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);

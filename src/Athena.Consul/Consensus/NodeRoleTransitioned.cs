@@ -1,4 +1,4 @@
-﻿namespace Athena.Consensus
+﻿namespace Athena.Consul.Consensus
 {
     public class NodeRoleTransitioned
     {

@@ -41,8 +41,10 @@ namespace Athena.Configuration
         }
 
         internal abstract Task RunSetupsFor(SetupEvent evnt, AthenaSetupContext context);
-        internal abstract Task<Func<AthenaContext, Task>> RunStartup(AthenaContext context);
-
+        
+        internal abstract Task Startup(AthenaContext context);
+        internal abstract Task Shutdown(AthenaContext context);
+        
         protected void AddParentConfigurer(Func<object, object, AthenaSetupContext, Task<object>> config)
         {
             _configureParent.Add(config);
@@ -93,9 +95,13 @@ namespace Athena.Configuration
     
     public class PartConfiguration<TPart> : PartConfiguration where TPart : class, new()
     {
+        private object _syncRoot = new object();
+        
         private bool _hasSetup;
+        private bool _running;
         private readonly AthenaBootstrapper _bootstrapper;
         private readonly Action<string, PartConfiguration> _addPartConfiguration;
+        private Func<Func<bool, Task>, AthenaContext, Task> _conditionallySubscription;
         
         private readonly
             ConcurrentBag<Tuple<Func<SetupEvent, bool>, Func<object, SetupEvent, AthenaSetupContext, Task>>> _setups =
@@ -135,6 +141,13 @@ namespace Athena.Configuration
         public PartConfiguration<TPart> OnSetup(Action<TPart, AthenaSetupContext> setup)
         {
             return On<BootstrapStarted>((part, evnt, context) => setup(part, context));
+        }
+
+        public PartConfiguration<TPart> ConditionallyRun(Func<Func<bool, Task>, AthenaContext, Task> subscribe)
+        {
+            _conditionallySubscription = subscribe;
+
+            return this;
         }
 
         public PartConfiguration<TPart> On<TEvent>(Func<TPart, TEvent, AthenaSetupContext, Task> setup,
@@ -237,16 +250,59 @@ namespace Athena.Configuration
                 .ConfigureAwait(false);
         }
 
-        internal override async Task<Func<AthenaContext, Task>> RunStartup(AthenaContext context)
+        internal override async Task Startup(AthenaContext context)
         {
-            await Task.WhenAll(_startups.Select(x => x(context))).ConfigureAwait(false);
+            if (_conditionallySubscription != null)
+            {
+                await _conditionallySubscription(shouldRun => ChangeRunningStatus(shouldRun, context), context)
+                    .ConfigureAwait(false);
+                
+                return;
+            }
+            
+            await RunStartups(context).ConfigureAwait(false);
+        }
 
-            return x => Task.WhenAll(_shutdowns.Select(y => y(x)));
+        internal override Task Shutdown(AthenaContext context)
+        {
+            lock (_syncRoot)
+            {
+                if (!_running)
+                    return Task.CompletedTask;
+
+                _running = false;
+
+                return Task.WhenAll(_shutdowns.Select(y => y(context)));
+            }
         }
 
         internal override object GetPart()
         {
             return Settings;
+        }
+
+        private async Task ChangeRunningStatus(bool shouldRun, AthenaContext context)
+        {
+            if (_running == shouldRun)
+                return;
+
+            if (shouldRun)
+                await RunStartups(context).ConfigureAwait(false);
+            else
+                await Shutdown(context).ConfigureAwait(false);
+        }
+        
+        private Task RunStartups(AthenaContext context)
+        {
+            lock (_syncRoot)
+            {
+                if (_running)
+                    return Task.CompletedTask;
+
+                _running = true;
+
+                return Task.WhenAll(_startups.Select(x => x(context)));
+            }
         }
 
         internal void WithSetup<TEvent>(Func<TPart, TEvent, AthenaSetupContext, Task> setup,

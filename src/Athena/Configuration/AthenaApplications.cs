@@ -14,6 +14,8 @@ namespace Athena.Configuration
     
     public sealed class AthenaApplications : AthenaSetupContext, AthenaBootstrapper
     {
+        private readonly Stopwatch _timer;
+        
         private readonly ConcurrentDictionary<string, PartConfiguration> _partConfigurations =
             new ConcurrentDictionary<string, PartConfiguration>();
         
@@ -21,10 +23,11 @@ namespace Athena.Configuration
             = new ConcurrentDictionary<string, AppFunctionBuilder>();
 
         private AthenaApplications(string applicationName, string environment,
-            IReadOnlyCollection<Assembly> applicationAssemblies)
+            IReadOnlyCollection<Assembly> applicationAssemblies, Stopwatch timer)
         {
             Environment = environment;
             ApplicationAssemblies = applicationAssemblies;
+            _timer = timer;
             ApplicationName = applicationName;
         }
         
@@ -79,8 +82,6 @@ namespace Athena.Configuration
 
         public async Task<AthenaContext> Build()
         {
-            var timer = Stopwatch.StartNew();
-            
             Logger.Write(LogLevel.Debug, "Starting context build");
             
             await Done(new BootstrapStarted(ApplicationName, Environment)).ConfigureAwait(false);
@@ -100,7 +101,7 @@ namespace Athena.Configuration
                     _partConfigurations)
                 .ConfigureAwait(false);
 
-            await Done(new BootstrapCompleted(ApplicationName, Environment, timer.Elapsed)).ConfigureAwait(false);
+            await Done(new BootstrapCompleted(ApplicationName, Environment, _timer.Elapsed)).ConfigureAwait(false);
             
             Logger.Write(LogLevel.Debug, "Context build finished");
 
@@ -140,7 +141,37 @@ namespace Athena.Configuration
         public static AthenaBootstrapper From(string environment, string applicationName,
             params Assembly[] applicationAssemblies)
         {
-            return new AthenaApplications(applicationName, environment, applicationAssemblies);
+            var timer = Stopwatch.StartNew();
+            
+            AthenaBootstrapper bootstrapper = new AthenaApplications(applicationName, environment, 
+                applicationAssemblies, timer);
+
+            var componentType = typeof(AthenaComponent);
+
+            var components = applicationAssemblies.SelectMany(GetAllAssemblies)
+                .SelectMany(x => x.GetTypes())
+                .Where(x =>
+                {
+                    var typeInfo = x.GetTypeInfo();
+
+                    return componentType.IsAssignableFrom(x)
+                           && !typeInfo.IsAbstract
+                           && !typeInfo.IsInterface
+                           && x.GetConstructors().Any(y => !y.GetParameters().Any() && y.IsPublic);
+                })
+                .Select(Activator.CreateInstance)
+                .OfType<AthenaComponent>()
+                .ToList();
+
+            return components.Aggregate(bootstrapper, (current, component) => component.Configure(current));
+        }
+        
+        private static IEnumerable<Assembly> GetAllAssemblies(Assembly from)
+        {
+            yield return from;
+
+            foreach (var referencedAssembly in from.GetReferencedAssemblies())
+                yield return Assembly.Load(referencedAssembly);
         }
     }
 }
