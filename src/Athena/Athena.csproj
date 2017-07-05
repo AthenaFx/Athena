@@ -17,4 +17,9 @@
     <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="1.1.0" />
     <PackageReference Include="System.Reactive" Version="4.0.0-preview00001" />
   </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System.Threading.Tasks.Parallel, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <HintPath>..\..\..\..\..\Users\Jakobsson\.nuget\packages\system.threading.tasks.parallel\4.0.1\ref\netstandard1.1\System.Threading.Tasks.Parallel.dll</HintPath>
+    </Reference>
+  </ItemGroup>
 </Project>

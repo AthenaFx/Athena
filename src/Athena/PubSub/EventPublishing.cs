@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Threading.Tasks;
 using Athena.Logging;
 
 namespace Athena.PubSub
@@ -26,12 +27,12 @@ namespace Athena.PubSub
         public static IObservable<TEvent> OpenChannel<TEvent>()
         {
             Logger.Write(LogLevel.Debug, $"Subscribing to event of type {typeof(TEvent)}");
-            
+
             var eventObserver = EventObservers.GetOrAdd(typeof(TEvent), x => new EventObserver());
-            
+
             return new EventObservable<TEvent>(eventObserver);
         }
-        
+
         private class EventObservable<TEvent> : IObservable<TEvent>, IDisposable
         {
             private readonly EventObserver _eventObserver;
@@ -68,15 +69,28 @@ namespace Athena.PubSub
             public void RemoveSubscriber(string id)
             {
                 IObserver<object> observer;
-                _observers.TryRemove(id, out observer);
+                if(!_observers.TryRemove(id, out observer))
+                    return;
+                
+                observer.OnCompleted();
             }
 
             public void OnNext(object value)
             {
-                foreach (var observer in _observers)
-                    observer.Value.OnNext(value);
+                Parallel.ForEach(_observers, observer =>
+                {
+                    try
+                    {
+                        observer.Value.OnNext(value);
+                    }
+                    catch (Exception e)
+                    {
+                        observer.Value.OnError(e);
+                        throw;
+                    }
+                });
             }
-        
+
             private class IntermidiatObserver<TEvent> : IObserver<object>
             {
                 private readonly IObserver<TEvent> _inner;
@@ -102,6 +116,5 @@ namespace Athena.PubSub
                 }
             }
         }
-
     }
 }
