@@ -75,9 +75,8 @@ namespace Athena.Configuration
                 
                 timer.Stop();
 
-                await EventPublishing.Publish(new ApplicationExecutedRequest(application,
-                    environment.GetRequestId(), timer.Elapsed, DateTime.UtcNow))
-                    .ConfigureAwait(false);
+                EventPublishing.Publish(new ApplicationExecutedRequest(application,
+                    environment.GetRequestId(), timer.Elapsed, DateTime.UtcNow));
             }
             
             Logger.Write(LogLevel.Debug, $"Application executed {application}");
@@ -87,7 +86,7 @@ namespace Athena.Configuration
         {
             Logger.Write(LogLevel.Debug, "Starting shutdown of application");
             
-            await EventPublishing.Publish(new ShutdownStarted(ApplicationName, Environment));
+            EventPublishing.Publish(new ShutdownStarted(ApplicationName, Environment));
 
             await Task.WhenAll(_configurations.Select(x => x.Value.Shutdown(this))).ConfigureAwait(false);
             

@@ -17,6 +17,7 @@
     <PackageReference Include="Consul">
       <Version>0.7.2.3</Version>
     </PackageReference>
+    <PackageReference Include="System.Reactive" Version="4.0.0-preview00001" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Athena\Athena.csproj">

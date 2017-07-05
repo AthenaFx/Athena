@@ -86,12 +86,14 @@ namespace Athena.ApplicationTimeouts
                     continue;
                 }
 
-                var nextExpiredTimeout = await _timeoutStore.GetNextChunk(startSlice, async x =>
+                var nextExpiredTimeout = await _timeoutStore.GetNextChunk(startSlice, x =>
                 {
                     if (startSlice < x.Item2)
                         startSlice = x.Item2;
 
-                    await EventPublishing.Publish(x.Item1.Message).ConfigureAwait(false);
+                    EventPublishing.Publish(x.Item1.Message);
+                    
+                    return Task.CompletedTask;
                 }).ConfigureAwait(false);
 
                 nextRetrieval = nextExpiredTimeout;

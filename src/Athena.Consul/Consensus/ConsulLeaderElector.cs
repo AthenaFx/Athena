@@ -81,7 +81,7 @@ namespace Athena.Consul.Consensus
                     {
                         Logger.Write(LogLevel.Debug, $"Node became follower of {Name}");
                         
-                        await EventPublishing.Publish(new NodeRoleTransitioned(NodeRole.Follower)).ConfigureAwait(false);
+                        EventPublishing.Publish(new NodeRoleTransitioned(NodeRole.Follower));
                         CurrentRole = NodeRole.Follower;
                     }
 
@@ -94,7 +94,7 @@ namespace Athena.Consul.Consensus
                     {
                         Logger.Write(LogLevel.Debug, $"Node became leader of {Name}");
                         
-                        await EventPublishing.Publish(new NodeRoleTransitioned(NodeRole.Leader)).ConfigureAwait(false);
+                        EventPublishing.Publish(new NodeRoleTransitioned(NodeRole.Leader));
                         CurrentRole = NodeRole.Leader;
                     }
 

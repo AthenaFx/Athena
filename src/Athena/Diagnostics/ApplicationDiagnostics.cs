@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Athena.Configuration;
@@ -50,42 +51,45 @@ namespace Athena.Diagnostics
                         .ConfigureAwait(false);
                 }).OnStartup((conf, context) =>
                 {
-                    EventPublishing.Subscribe<object>(async evnt =>
-                    {
-                        var data = evnt
-                            .GetType()
-                            .GetProperties()
-                            .Where(ShouldIncludeInDiagnostics)
-                            .ToDictionary(x => x.Name, x => x.GetValue(evnt).ToString());
-                
-                        await conf
-                            .DataManager
-                            .AddDiagnostics(context.ApplicationName, "Lifecycle", "Runtime",
-                                new DiagnosticsData($"{evnt.GetType().Name}-{Guid.NewGuid():N}", data))
-                            .ConfigureAwait(false);
-                    });
+                    EventPublishing.OpenChannel<object>()
+                        .Select(async evnt =>
+                        {
+                            var data = evnt
+                                .GetType()
+                                .GetProperties()
+                                .Where(ShouldIncludeInDiagnostics)
+                                .ToDictionary(x => x.Name, x => x.GetValue(evnt).ToString());
 
-                    EventPublishing.Subscribe<ApplicationExecutedRequest>(async evnt =>
-                    {
-                        await conf
-                            .MetricsManager
-                            .ReportMetricsTotalValue(evnt.Application, "requestduration", evnt.Duration.TotalMilliseconds,
-                                evnt.At)
-                            .ConfigureAwait(false);
-                        
-                        await conf
-                            .MetricsManager
-                            .ReportMetricsApdexValue(evnt.Application, "requestdurationapdex", 
-                                evnt.Duration.TotalMilliseconds, evnt.At, 
-                                conf.GetTolerableApdexValue(evnt.Application, "requestdurationapdex"))
-                            .ConfigureAwait(false);
-                        
-                        await conf
-                            .MetricsManager
-                            .ReportMetricsPerSecondValue(evnt.Application, "requestrate", 1,
-                                evnt.At)
-                            .ConfigureAwait(false);
-                    });
+                            await conf
+                                .DataManager
+                                .AddDiagnostics(context.ApplicationName, "Lifecycle", "Runtime",
+                                    new DiagnosticsData($"{evnt.GetType().Name}-{Guid.NewGuid():N}", data))
+                                .ConfigureAwait(false);
+                        }).Subscribe();
+
+                    EventPublishing.OpenChannel<ApplicationExecutedRequest>()
+                        .Select(async evnt =>
+                        {
+                            await conf
+                                .MetricsManager
+                                .ReportMetricsTotalValue(evnt.Application, "requestduration",
+                                    evnt.Duration.TotalMilliseconds,
+                                    evnt.At)
+                                .ConfigureAwait(false);
+
+                            await conf
+                                .MetricsManager
+                                .ReportMetricsApdexValue(evnt.Application, "requestdurationapdex",
+                                    evnt.Duration.TotalMilliseconds, evnt.At,
+                                    conf.GetTolerableApdexValue(evnt.Application, "requestdurationapdex"))
+                                .ConfigureAwait(false);
+
+                            await conf
+                                .MetricsManager
+                                .ReportMetricsPerSecondValue(evnt.Application, "requestrate", 1,
+                                    evnt.At)
+                                .ConfigureAwait(false);
+                        }).Subscribe();
                 });
         }
 

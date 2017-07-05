@@ -23,14 +23,15 @@ namespace Athena.Diagnostics
 
         public Task ReportMetricsTotalValue(string application, string key, double value, DateTime at)
         {
-            return ReportMetricsValue(application, key, value, at, (totalValue, items, startAt) => totalValue / items);
+            return ReportMetricsValue(application, key, value, at, 
+                (totalValue, items, startAt, endAt) => totalValue / items);
         }
 
         public Task ReportMetricsPerSecondValue(string application, string key, double value, DateTime at)
         {
-            return ReportMetricsValue(application, key, value, at, (totalValue, items, startAt) =>
+            return ReportMetricsValue(application, key, value, at, (totalValue, items, startAt, endAt) =>
             {
-                var seconds = (DateTime.UtcNow - startAt).Seconds;
+                var seconds = (endAt - startAt).Seconds;
 
                 return totalValue / seconds;
             });
@@ -51,7 +52,7 @@ namespace Athena.Diagnostics
                 return Task.CompletedTask;
             }
             
-            return ReportMetricsValue(application, key, wasTolerable ? 1 : 0, at, (totalValue, items, startAt) =>
+            return ReportMetricsValue(application, key, wasTolerable ? 1 : 0, at, (totalValue, items, startAt, endAt) =>
             {
                 var frustratedRequests = _frustratedRequests
                     .GetOrAdd(application, x => new ConcurrentDictionary<string, long>())
@@ -85,7 +86,7 @@ namespace Athena.Diagnostics
         }
         
         private Task ReportMetricsValue(string application, string key, double value, DateTime at,
-            Func<double, long, DateTime, double> calculateAverage)
+            Func<double, long, DateTime, DateTime, double> calculateAverage)
         {
             var loweredApplication = (application ?? "").ToLower();
             var loweredKey = (key ?? "").ToLower();
@@ -103,7 +104,7 @@ namespace Athena.Diagnostics
 
         private class MetricsAverage
         {
-            private readonly Func<double, long, DateTime, double> _calculateAverage;
+            private readonly Func<double, long, DateTime, DateTime, double> _calculateAverage;
             private double _totalValue;
             private long _items;
             private DateTime _startAt;
@@ -113,10 +114,11 @@ namespace Athena.Diagnostics
 
             public MetricsAverage()
             {
-                _calculateAverage = (_, __, ___) => 0;
+                _calculateAverage = (_, __, ___, ____) => 0;
             }
 
-            public MetricsAverage(double value, DateTime at, Func<double, long, DateTime, double> calculateAverage)
+            public MetricsAverage(double value, DateTime at, Func<double, long, DateTime, DateTime, double> 
+                calculateAverage)
             {
                 _startAt = at;
                 _calculateAverage = calculateAverage;
@@ -151,7 +153,7 @@ namespace Athena.Diagnostics
 
             public double GetAverage()
             {
-                return _calculateAverage(_totalValue, _items, _startAt);
+                return _calculateAverage(_totalValue, _items, _startAt, DateTime.UtcNow);
             }
         }
 

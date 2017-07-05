@@ -6,7 +6,7 @@ namespace Athena.Diagnostics
 {
     public class DiagnosticsConfiguration
     {
-        private ConcurrentDictionary<string, ConcurrentDictionary<string, double>> _tolerableApdexValues = 
+        private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, double>> _tolerableApdexValues = 
             new ConcurrentDictionary<string, ConcurrentDictionary<string, double>>();
         
         public DiagnosticsDataManager DataManager { get; private set; } = new InMemoryDiagnosticsDataManager();

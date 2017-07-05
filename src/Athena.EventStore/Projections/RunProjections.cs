@@ -270,8 +270,7 @@ namespace Athena.EventStore.Projections
                 
                 StopProjection(projection);
                 
-                await EventPublishing.Publish(new ProjectionFailed(projection.GetType(), ex))
-                    .ConfigureAwait(false);
+                EventPublishing.Publish(new ProjectionFailed(projection.GetType(), ex));
             }
         }
     }

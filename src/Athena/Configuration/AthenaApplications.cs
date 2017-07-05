@@ -19,7 +19,7 @@ namespace Athena.Configuration
         private readonly ConcurrentDictionary<string, PartConfiguration> _partConfigurations =
             new ConcurrentDictionary<string, PartConfiguration>();
         
-        private readonly IDictionary<string, AppFunctionBuilder> _applicationBuilders
+        private readonly ConcurrentDictionary<string, AppFunctionBuilder> _applicationBuilders
             = new ConcurrentDictionary<string, AppFunctionBuilder>();
 
         private AthenaApplications(string applicationName, string environment,
@@ -51,25 +51,35 @@ namespace Athena.Configuration
 
         public Task DefineApplication(string name, Func<AppFunctionBuilder, AppFunctionBuilder> builder)
         {
-            if (_applicationBuilders.ContainsKey(name))
-                throw new InvalidOperationException($"There is already a application named {name}");
-            
             Logger.Write(LogLevel.Debug, $"Defining application with name {name}");
 
-            _applicationBuilders[name] = builder(new AppFunctionBuilder(this));
+            _applicationBuilders.AddOrUpdate(name, _ =>
+                {
+                    Logger.Write(LogLevel.Debug, $"Defining application with name {name}");
+                    
+                    return builder(new AppFunctionBuilder(this));
+                }, 
+                (_, __) =>
+                {
+                    Logger.Write(LogLevel.Info, $"Application \"{name}\" already exists, redifining");
+                    
+                    return builder(new AppFunctionBuilder(this));
+                });
 
             return Done(new ApplicationDefined(name));
         }
 
         public Task UpdateApplication(string name, Func<AppFunctionBuilder, AppFunctionBuilder> builder)
         {
-            if (!_applicationBuilders.ContainsKey(name))
-                throw new InvalidOperationException($"There is no application named {name}");
+            _applicationBuilders.AddOrUpdate(name, 
+                _ => throw new InvalidOperationException($"There is no application named {name}"), 
+                (_, current) =>
+                {
+                    Logger.Write(LogLevel.Debug, $"Updating application \"{name}\"");
+                    
+                    return builder(current);
+                });
             
-            Logger.Write(LogLevel.Debug, $"Updating application \"{name}\"");
-
-            _applicationBuilders[name] = builder(_applicationBuilders[name]);
-
             return Done(new ApplicationDefinitionModified(name));
         }
 
@@ -109,7 +119,7 @@ namespace Athena.Configuration
                     .Select(x => x.Value.RunSetupsFor(evnt, this)))
                 .ConfigureAwait(false);
 
-            await EventPublishing.Publish(evnt).ConfigureAwait(false);
+            EventPublishing.Publish(evnt);
         }
 
         private async Task<Tuple<string, AppFunc>> CompileApplication(string name, AppFunctionBuilder builder)

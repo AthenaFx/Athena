@@ -1,4 +1,6 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Reactive.Linq;
+using System.Threading.Tasks;
 using Athena.Configuration;
 using Athena.PubSub;
 using Logger = Athena.Logging.Logger;
@@ -25,13 +27,14 @@ namespace Athena.Consul.Consensus
         {
             return config.ConditionallyRun((changeStatus, context) =>
             {
-                EventPublishing.Subscribe<NodeRoleTransitioned>(async evnt =>
-                {
-                    var shouldRun = evnt.NewRole == role;
+                EventPublishing.OpenChannel<NodeRoleTransitioned>()
+                    .Select(async evnt =>
+                    {
+                        var shouldRun = evnt.NewRole == role;
 
-                    await changeStatus(shouldRun).ConfigureAwait(false);
-                });
-
+                        await changeStatus(shouldRun).ConfigureAwait(false);
+                    }).Subscribe();
+                
                 var settings = context.GetSetting<ConsulLeaderElector>();
                 
                 if(settings == null)
