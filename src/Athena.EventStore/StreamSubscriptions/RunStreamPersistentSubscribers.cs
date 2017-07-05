@@ -96,31 +96,33 @@ namespace Athena.EventStore.StreamSubscriptions
         {
             var routers = new List<EnvironmentRouter>
             {
-                RouteEventToMethod.New(x => x.Name == "Subscribe"
+                RouteEventToMethods.New(x => x.Name == "Subscribe"
                                             && (x.ReturnType == typeof(void) || x.ReturnType == typeof(Task))
-                                            && x.GetParameters().Length == 1, builder.Bootstrapper.ApplicationAssemblies,
+                                             && x.GetParameters().Any() && !x.IsGenericMethod, 
+                    builder.Bootstrapper.ApplicationAssemblies,
                     _createInstance)
             };
 
             var binders = new List<EnvironmentDataBinder>
             {
                 new BindEnvironment(),
-                new EventDataBinder()
+                new EventDataBinder(),
+                new BindSettings()
             };
 
             var resourceExecutors = new List<ResourceExecutor>
             {
-                new MethodResourceExecutor(binders)
+                new MultipleMethodResourceExecutor(binders)
             };
 
-            //TODO:Make sure we can have multiple subscribers to same event
             return builder
                 .First("HandleTransactions",
                     next => new HandleTransactions(next, _transactions.ToList()).Invoke,
                     () => _transactions.GetDiagnosticsData())
                 .ContinueWith("SupplyMetaData", next => new SupplyMetaData(next, _metaDataSuppliers.ToList()).Invoke,
                     () => _metaDataSuppliers.GetDiagnosticsData())
-                .ContinueWith("RouteToResource", next => new RouteToResource(next, routers).Invoke)
+                .ContinueWith("RouteToResource", next => new RouteToResource(next, routers).Invoke,
+                    () => routers.GetDiagnosticsData())
                 .Last("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke,
                     () => resourceExecutors.GetDiagnosticsData());
         }

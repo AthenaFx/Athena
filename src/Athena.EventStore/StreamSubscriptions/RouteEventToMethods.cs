@@ -8,25 +8,27 @@ using Athena.Routing;
 
 namespace Athena.EventStore.StreamSubscriptions
 {
-    public class RouteEventToMethod : ToMethodRouter
+    public class RouteEventToMethods : ToMultipleMethodsRouter
     {
         private readonly Func<Type, IDictionary<string, object>, object> _createInstance;
         
-        private RouteEventToMethod(IReadOnlyCollection<MethodInfo> availableMethods, 
+        private RouteEventToMethods(IReadOnlyCollection<MethodInfo> availableMethods, 
             Func<Type, IDictionary<string, object>, object> createInstance) : base(availableMethods)
         {
             _createInstance = createInstance;
         }
 
-        protected override MethodInfo Route(IDictionary<string, object> environment, 
+        protected override IEnumerable<MethodInfo> Route(IDictionary<string, object> environment, 
             IReadOnlyCollection<MethodInfo> availableMethods)
         {
             var evnt = environment.Get<DeSerializationResult>("event");
 
-            return evnt == null 
-                ? null 
-                : availableMethods.FirstOrDefault(x => x.GetParameters()
-                    .Any(y => y.ParameterType == evnt.Data.GetType()));
+            if (evnt == null)
+                return Enumerable.Empty<MethodInfo>();
+
+            return availableMethods
+                .Where(x => x.GetParameters().First().ParameterType == evnt.Data.GetType())
+                .ToList();
         }
 
         protected override object CreateInstance(Type type, IDictionary<string, object> environment)
@@ -34,7 +36,15 @@ namespace Athena.EventStore.StreamSubscriptions
             return _createInstance(type, environment);
         }
 
-        public static RouteEventToMethod New(Func<MethodInfo, bool> filter, IEnumerable<Assembly> assemblies,
+        protected override KeyValuePair<string, string> GetRouteFor(MethodInfo methodInfo)
+        {
+            var eventType = methodInfo.GetParameters().First().ParameterType;
+            
+            return new KeyValuePair<string, string>(eventType.ToString(),
+                $"{methodInfo.DeclaringType.Namespace}.{methodInfo.DeclaringType.Name}.{methodInfo.Name}()");
+        }
+
+        public static RouteEventToMethods New(Func<MethodInfo, bool> filter, IEnumerable<Assembly> assemblies,
             Func<Type, IDictionary<string, object>, object> createInstance)
         {
             var methods = assemblies
@@ -43,7 +53,7 @@ namespace Athena.EventStore.StreamSubscriptions
                 .Where(filter)
                 .ToList();
 
-            return new RouteEventToMethod(new ReadOnlyCollection<MethodInfo>(methods), createInstance);
+            return new RouteEventToMethods(new ReadOnlyCollection<MethodInfo>(methods), createInstance);
         }
     }
 }

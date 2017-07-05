@@ -6,23 +6,26 @@ using System.Threading.Tasks;
 
 namespace Athena.Routing
 {
-    public abstract class ToMethodRouter : EnvironmentRouter
+    public abstract class ToMultipleMethodsRouter : EnvironmentRouter
     {
         private readonly IReadOnlyCollection<MethodInfo> _availableMethods;
         
-        protected ToMethodRouter(IReadOnlyCollection<MethodInfo> availableMethods)
+        protected ToMultipleMethodsRouter(IReadOnlyCollection<MethodInfo> availableMethods)
         {
             _availableMethods = availableMethods;
         }
-
+        
         public Task<RouterResult> Route(IDictionary<string, object> environment)
         {
-            var method = Route(environment, _availableMethods);
+            var methods = Route(environment, _availableMethods).ToList();
 
-            return Task.FromResult<RouterResult>(method == null 
-                ? null 
-                : new MethodResourceRouterResult(method, CreateInstance(method.DeclaringType, environment), 
-                    new Dictionary<string, object>()));
+            var result = methods.Any()
+                ? new MultipleMethodsResourceRouterResult(methods
+                    .Select(x => new MethodResourceRouterResult(x, CreateInstance(x.DeclaringType, environment),
+                        new Dictionary<string, object>())))
+                : null;
+
+            return Task.FromResult<RouterResult>(result);
         }
 
         public IReadOnlyDictionary<string, string> GetAvailableRoutes()
@@ -33,11 +36,11 @@ namespace Athena.Routing
                 .ToDictionary(x => x.Key, x => string.Join(", ", x.Select(y => y.Value)));
         }
 
-        protected abstract MethodInfo Route(IDictionary<string, object> environment,
+        protected abstract IEnumerable<MethodInfo> Route(IDictionary<string, object> environment,
             IReadOnlyCollection<MethodInfo> availableMethods);
-
-        protected abstract object CreateInstance(Type type, IDictionary<string, object> environment);
         
+        protected abstract object CreateInstance(Type type, IDictionary<string, object> environment);
+
         protected abstract KeyValuePair<string, string> GetRouteFor(MethodInfo methodInfo);
     }
 }

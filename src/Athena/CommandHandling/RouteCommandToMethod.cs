@@ -25,14 +25,22 @@ namespace Athena.CommandHandling
             return command == null
                 ? null
                 : availableMethods.FirstOrDefault(x =>
-                    x.GetParameters().Any(y => y.ParameterType == command.GetType()));
+                    x.GetParameters().Any() && x.GetParameters().First().ParameterType == command.GetType());
         }
 
         protected override object CreateInstance(Type type, IDictionary<string, object> environment)
         {
             return _createInstance(type, environment);
         }
-        
+
+        protected override KeyValuePair<string, string> GetRouteFor(MethodInfo methodInfo)
+        {
+            var commandType = methodInfo.GetParameters().First().ParameterType;
+
+            return new KeyValuePair<string, string>(commandType.ToString(),
+                $"{methodInfo.DeclaringType.Namespace}.{methodInfo.DeclaringType.Name}.{methodInfo.Name}()");
+        }
+
         public static RouteCommandToMethod New(Func<MethodInfo, bool> filter, 
             IReadOnlyCollection<Assembly> applicationAssemblies, 
             Func<Type, IDictionary<string, object>, object> createInstance)

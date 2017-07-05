@@ -39,5 +39,37 @@ namespace Athena.Web.Routing
                 route.Route.Destination, _createInstance(route.Route.Destination.DeclaringType, environment), 
                 route.Match.Parameters) : null);
         }
+
+        public IReadOnlyDictionary<string, string> GetAvailableRoutes()
+        {
+            return _routes
+                .SelectMany(GetAvailableRoutesFor)
+                .GroupBy(x => x.Key)
+                .ToDictionary(x => x.Key, x => string.Join(", ", x.Select(y => y.Value)));
+        }
+
+        private IEnumerable<KeyValuePair<string, string>> GetAvailableRoutesFor(Route route)
+        {
+            var httpMethods = route.AvailableHttpMethods.ToList();
+
+            if (!httpMethods.Any())
+            {
+                httpMethods = new List<string>
+                {
+                    "GET",
+                    "POST",
+                    "HEAD",
+                    "PUT",
+                    "DELETE",
+                    "OPTIONS",
+                    "CONNECT"
+                };
+            }
+
+            return httpMethods
+                .Select(x => new KeyValuePair<string, string>($"{x} /{route.Pattern}",
+                    $"{route.Destination.DeclaringType.Namespace}.{route.Destination.DeclaringType.Name}.{route.Destination.Name}()"))
+                .ToList();
+        }
     }
 }

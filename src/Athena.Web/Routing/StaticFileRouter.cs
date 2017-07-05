@@ -27,5 +27,10 @@ namespace Athena.Web.Routing
 
             return null;
         }
+
+        public IReadOnlyDictionary<string, string> GetAvailableRoutes()
+        {
+            return new Dictionary<string, string>();
+        }
     }
 }

@@ -6,5 +6,6 @@ namespace Athena.Routing
     public interface EnvironmentRouter
     {
         Task<RouterResult> Route(IDictionary<string, object> environment);
+        IReadOnlyDictionary<string, string> GetAvailableRoutes();
     }
 }

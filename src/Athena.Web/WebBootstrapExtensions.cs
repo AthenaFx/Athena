@@ -5,12 +5,20 @@ using Athena.Logging;
 namespace Athena.Web
 {
     public static class WebBootstrapExtensions
-    {        
+    {
+        private static readonly ICollection<string> RegisteredWebApplications = new List<string>();
+        
         public static PartConfiguration<WebApplicationSettings> UsingWebApplication(
             this AthenaBootstrapper bootstrapper, string name = "web_default")
         {
             var key = $"_web_application_{name}";
-            
+
+            if (RegisteredWebApplications.Contains(key))
+            {
+                return bootstrapper
+                    .Part<WebApplicationSettings>(key);
+            }
+
             Logger.Write(LogLevel.Debug, $"Adding web application named {name}");
             
             var appConfiguration = bootstrapper
@@ -60,6 +68,8 @@ namespace Athena.Web
 
                     return webAppSettings;
                 });
+
+            RegisteredWebApplications.Add(key);
             
             return appConfiguration;
         }

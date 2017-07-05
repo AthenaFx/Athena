@@ -113,8 +113,6 @@ namespace Athena.Web
 
         protected override AppFunctionBuilder DefineDefaultApplication(AppFunctionBuilder builder)
         {
-            var routes = _buildRoutes(this, builder.Bootstrapper);
-
             var fileHandlers = new List<StaticFileReader>
             {
                 new ReadStaticFilesFromFileSystem("index.html", "index.htm")
@@ -122,7 +120,8 @@ namespace Athena.Web
 
             var routers = new List<EnvironmentRouter>
             {
-                new UrlPatternRouter(routes, new DefaultRoutePatternMatcher(), _createHandlerInstanceWith),
+                new UrlPatternRouter(_buildRoutes(this, builder.Bootstrapper), new DefaultRoutePatternMatcher(), 
+                    _createHandlerInstanceWith),
                 new StaticFileRouter(fileHandlers)
             };
 
@@ -130,7 +129,8 @@ namespace Athena.Web
             {
                 new BindEnvironment(),
                 new BindContext(),
-                new WebDataBinder(ModelBinders.GetAll())
+                new WebDataBinder(ModelBinders.GetAll()),
+                new BindSettings()
             };
 
             var outputParsers = new List<ResultParser>
@@ -174,7 +174,7 @@ namespace Athena.Web
                 .ContinueWith("SupplyMetaData", next => new SupplyMetaData(next, _metaDataSuppliers.ToList()).Invoke,
                     () => _metaDataSuppliers.GetDiagnosticsData())
                 .ContinueWith("RouteToResource",
-                    next => new RouteToResource(next, routers).Invoke, () => routes.GetDiagnosticsData())
+                    next => new RouteToResource(next, routers).Invoke, () => routers.GetDiagnosticsData())
                 .ContinueWith("EnsureEndpointExists", next => new EnsureEndpointExists(next, routeCheckers,
                     async environment =>
                     {

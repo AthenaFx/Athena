@@ -60,7 +60,8 @@ namespace Athena.CommandHandling
             {
                 new BindEnvironment(),
                 new BindContext(),
-                new CommandDataBinder()
+                new CommandDataBinder(),
+                new BindSettings()
             };
 
             var resourceExecutors = new List<ResourceExecutor>
@@ -79,7 +80,8 @@ namespace Athena.CommandHandling
                     () => _transactions.GetDiagnosticsData())
                 .ContinueWith("SupplyMetaData", next => new SupplyMetaData(next, _metaDataSuppliers.ToList()).Invoke,
                     () => _metaDataSuppliers.GetDiagnosticsData())
-                .ContinueWith("RouteToResource", next => new RouteToResource(next, routers).Invoke)
+                .ContinueWith("RouteToResource", next => new RouteToResource(next, routers).Invoke,
+                    () => routers.GetDiagnosticsData())
                 .ContinueWith("EnsureEndpointExists", next => new EnsureEndpointExists(next, routeCheckers, x => 
                     throw new CommandHandlerNotFoundException(x.Get<object>("command").GetType())).Invoke,
                     () => routeCheckers.GetDiagnosticsData())

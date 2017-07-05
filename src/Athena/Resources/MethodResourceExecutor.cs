@@ -16,7 +16,7 @@ namespace Athena.Resources
             _environmentDataBinders = environmentDataBinders;
         }
 
-        public async Task<ResourceExecutionResult> Execute(RouterResult resource, 
+        public virtual async Task<ResourceExecutionResult> Execute(RouterResult resource, 
             IDictionary<string, object> environment)
         {
             var methodResource = resource as MethodResourceRouterResult;

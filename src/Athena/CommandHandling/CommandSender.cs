@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Athena.Configuration;
@@ -28,7 +27,7 @@ namespace Athena.CommandHandling
         public static PartConfiguration<CommandSenderConfiguration> EnableCommandSender(
             this AthenaBootstrapper bootstrapper)
         {
-            Logger.Write(LogLevel.Debug, $"Enabling command sender");
+            Logger.Write(LogLevel.Debug, "Enabling command sender");
 
             return bootstrapper.Part<CommandSenderConfiguration>()
                 .OnSetup((conf, context) =>

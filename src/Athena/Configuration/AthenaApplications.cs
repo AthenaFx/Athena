@@ -73,13 +73,6 @@ namespace Athena.Configuration
             return Done(new ApplicationDefinitionModified(name));
         }
 
-        public IReadOnlyCollection<string> GetDefinedApplications()
-        {
-            Logger.Write(LogLevel.Debug, "Getting defined applications");
-            
-            return _applicationBuilders.Keys.ToList();
-        }
-
         public async Task<AthenaContext> Build()
         {
             Logger.Write(LogLevel.Debug, "Starting context build");

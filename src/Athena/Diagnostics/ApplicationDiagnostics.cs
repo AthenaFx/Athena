@@ -23,7 +23,9 @@ namespace Athena.Diagnostics
                     Logger.Write(LogLevel.Debug, "Configuring diagnostics");
                     
                     return context.UpdateApplication(evnt.Name,
-                        builder => builder.WrapAllWith((next, nextItem) =>
+                        builder => builder.First("ReportErrorRate", 
+                                next => new ReportErrorRate(next, conf.HasError, conf.MetricsManager).Invoke)
+                            .WrapAllWith((next, nextItem) =>
                             new DiagnoseInnerBehavior(next, nextItem, conf.DataManager).Invoke));
                 }).On<ApplicationCompiled>(async (conf, evnt, context) =>
                 {

@@ -53,6 +53,16 @@ namespace Athena.Configuration
             return _configurations.ContainsKey(key) ? _configurations[key].GetPart() as TSetting : null;
         }
 
+        public object GetSetting(Type type, string key = null)
+        {
+            if (string.IsNullOrEmpty(key))
+                key = type.AssemblyQualifiedName;
+            
+            Logger.Write(LogLevel.Debug, $"Getting settings {type} with key {key}");
+
+            return _configurations.ContainsKey(key) ? _configurations[key].GetPart() : null;
+        }
+
         public async Task Execute(string application, IDictionary<string, object> environment)
         {
             Logger.Write(LogLevel.Debug, $"Executing application {application}");

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,7 +35,7 @@ namespace Athena.Diagnostics
 
         public Task<IEnumerable<string>> GetApplications()
         {
-            return Task.FromResult<IEnumerable<string>>(Data.Keys);
+            return Task.FromResult<IEnumerable<string>>(Data.Keys.OrderBy(x => x));
         }
 
         public Task<IEnumerable<string>> GetTypesFor(string application)
@@ -45,7 +46,7 @@ namespace Athena.Diagnostics
 
             return Task.FromResult(!Data.TryGetValue(loweredApplication, out categoryData) 
                 ? Enumerable.Empty<string>() 
-                : categoryData.Keys);
+                : categoryData.Keys.OrderBy(x => x));
         }
 
         public Task<IEnumerable<string>> GetStepsFor(string application, string type, int numberOfSteps = 50)
@@ -62,7 +63,7 @@ namespace Athena.Diagnostics
 
             return Task.FromResult(!categoryData.TryGetValue(loweredType, out typeData) 
                 ? Enumerable.Empty<string>() 
-                : typeData.Keys.Take(numberOfSteps));
+                : typeData.Keys.OrderBy(x => x).Take(numberOfSteps));
         }
 
         public Task<IReadOnlyDictionary<string, IEnumerable<KeyValuePair<string, string>>>> GetDataFor(
