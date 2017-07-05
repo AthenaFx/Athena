@@ -64,6 +64,15 @@ namespace Athena.Diagnostics
                                 new DiagnosticsData($"{evnt.GetType().Name}-{Guid.NewGuid():N}", data))
                             .ConfigureAwait(false);
                     });
+
+                    EventPublishing.Subscribe<ApplicationExecutedRequest>(async evnt =>
+                    {
+                        await conf
+                            .MetricsManager
+                            .ReportMetricsValue(evnt.Application, "requestduration", evnt.Duration.TotalMilliseconds,
+                                evnt.At)
+                            .ConfigureAwait(false);
+                    });
                 });
         }
 
