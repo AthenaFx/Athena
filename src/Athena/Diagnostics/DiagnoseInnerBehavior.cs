@@ -11,20 +11,20 @@ namespace Athena.Diagnostics
     {
         private readonly AppFunc _next;
         private readonly string _nextItem;
-        private readonly DiagnosticsDataManager _diagnosticsDataManager;
+        private readonly DiagnosticsConfiguration _settings;
         
-        public DiagnoseInnerBehavior(AppFunc next, string nextItem, DiagnosticsDataManager diagnosticsDataManager)
+        public DiagnoseInnerBehavior(AppFunc next, string nextItem, DiagnosticsConfiguration settings)
         {
             _next = next;
             _nextItem = nextItem;
-            _diagnosticsDataManager = diagnosticsDataManager;
+            _settings = settings;
         }
 
         public async Task Invoke(IDictionary<string, object> environment)
         {
             Logger.Write(LogLevel.Debug, $"Starting to diagnose {_nextItem}");
 
-            var context = _diagnosticsDataManager.OpenDiagnosticsTimerContext(environment, "Middlewares", _nextItem);
+            var context = _settings.OpenDiagnosticsTimerContext(environment, "Middlewares", _nextItem);
 
             await _next(environment).ConfigureAwait(false);
 

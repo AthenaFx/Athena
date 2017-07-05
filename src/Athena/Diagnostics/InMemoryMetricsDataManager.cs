@@ -13,25 +13,52 @@ namespace Athena.Diagnostics
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, MetricsAverage>> _data =
             new ConcurrentDictionary<string, ConcurrentDictionary<string, MetricsAverage>>();
 
+        private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, long>> _frustratedRequests =
+            new ConcurrentDictionary<string, ConcurrentDictionary<string, long>>();
+
         public InMemoryMetricsDataManager(TimeSpan saveDataFor)
         {
             _saveDataFor = saveDataFor;
         }
 
-        public Task ReportMetricsValue(string application, string key, double value, DateTime at)
+        public Task ReportMetricsTotalValue(string application, string key, double value, DateTime at)
         {
-            var loweredApplication = (application ?? "").ToLower();
-            var loweredKey = (key ?? "").ToLower();
+            return ReportMetricsValue(application, key, value, at, (totalValue, items, startAt) => totalValue / items);
+        }
+
+        public Task ReportMetricsPerSecondValue(string application, string key, double value, DateTime at)
+        {
+            return ReportMetricsValue(application, key, value, at, (totalValue, items, startAt) =>
+            {
+                var seconds = (DateTime.UtcNow - startAt).Seconds;
+
+                return totalValue / seconds;
+            });
+        }
+
+        public Task ReportMetricsApdexValue(string application, string key, double value, DateTime at, double tolerable)
+        {
+            var wasTolerable = value <= tolerable;
+
+            var wasFrustrating = tolerable * 4 <= value;
+
+            if (wasFrustrating)
+            {
+                _frustratedRequests
+                    .GetOrAdd(application, x => new ConcurrentDictionary<string, long>())
+                    .AddOrUpdate(key, x => 1, (_, currentValue) => currentValue + 1);
+                
+                return Task.CompletedTask;
+            }
             
-            var applicationData = _data.GetOrAdd(loweredApplication,
-                    x => new ConcurrentDictionary<string, MetricsAverage>());
+            return ReportMetricsValue(application, key, wasTolerable ? 1 : 0, at, (totalValue, items, startAt) =>
+            {
+                var frustratedRequests = _frustratedRequests
+                    .GetOrAdd(application, x => new ConcurrentDictionary<string, long>())
+                    .GetOrAdd(key, x => 0);
 
-            var removeBefore = DateTime.UtcNow - _saveDataFor;
-
-            applicationData.AddOrUpdate(loweredKey, _ => new MetricsAverage(value, at),
-                (_, item) => item.Add(value, at, removeBefore));
-
-            return Task.CompletedTask;
+                return (totalValue + (items - totalValue) / 2) / (items + frustratedRequests);
+            });
         }
 
         public Task<double> GetAverageFor(string application, string key)
@@ -56,22 +83,43 @@ namespace Athena.Diagnostics
 
             return Task.FromResult<IReadOnlyCollection<string>>(applicationData.Keys.ToList());
         }
+        
+        private Task ReportMetricsValue(string application, string key, double value, DateTime at,
+            Func<double, long, DateTime, double> calculateAverage)
+        {
+            var loweredApplication = (application ?? "").ToLower();
+            var loweredKey = (key ?? "").ToLower();
+            
+            var applicationData = _data.GetOrAdd(loweredApplication,
+                x => new ConcurrentDictionary<string, MetricsAverage>());
+
+            var removeBefore = DateTime.UtcNow - _saveDataFor;
+
+            applicationData.AddOrUpdate(loweredKey, _ => new MetricsAverage(value, at, calculateAverage),
+                (_, item) => item.Add(value, at, removeBefore));
+
+            return Task.CompletedTask;
+        }
 
         private class MetricsAverage
         {
+            private readonly Func<double, long, DateTime, double> _calculateAverage;
             private double _totalValue;
             private long _items;
+            private DateTime _startAt;
 
             private readonly ConcurrentDictionary<string, AveragePerMinuteValue> _averagePerMinute =
                 new ConcurrentDictionary<string, AveragePerMinuteValue>();
 
             public MetricsAverage()
             {
-                
+                _calculateAverage = (_, __, ___) => 0;
             }
 
-            public MetricsAverage(double value, DateTime at)
+            public MetricsAverage(double value, DateTime at, Func<double, long, DateTime, double> calculateAverage)
             {
+                _startAt = at;
+                _calculateAverage = calculateAverage;
                 Add(value, at);
             }
 
@@ -83,6 +131,8 @@ namespace Athena.Diagnostics
 
                 _totalValue += value;
                 _items += 1;
+
+                _startAt = at < _startAt ? at : _startAt;
 
                 if (!removeBefore.HasValue) 
                     return this;
@@ -101,7 +151,7 @@ namespace Athena.Diagnostics
 
             public double GetAverage()
             {
-                return _totalValue / _items;
+                return _calculateAverage(_totalValue, _items, _startAt);
             }
         }
 

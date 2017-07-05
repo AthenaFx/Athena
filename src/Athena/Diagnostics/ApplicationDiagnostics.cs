@@ -26,7 +26,7 @@ namespace Athena.Diagnostics
                         builder => builder.First("ReportErrorRate", 
                                 next => new ReportErrorRate(next, conf.HasError, conf.MetricsManager).Invoke)
                             .WrapAllWith((next, nextItem) =>
-                            new DiagnoseInnerBehavior(next, nextItem, conf.DataManager).Invoke));
+                            new DiagnoseInnerBehavior(next, nextItem, conf).Invoke));
                 }).On<ApplicationCompiled>(async (conf, evnt, context) =>
                 {
                     await Task.WhenAll(evnt.Data.Select(item =>
@@ -69,17 +69,30 @@ namespace Athena.Diagnostics
                     {
                         await conf
                             .MetricsManager
-                            .ReportMetricsValue(evnt.Application, "requestduration", evnt.Duration.TotalMilliseconds,
+                            .ReportMetricsTotalValue(evnt.Application, "requestduration", evnt.Duration.TotalMilliseconds,
+                                evnt.At)
+                            .ConfigureAwait(false);
+                        
+                        await conf
+                            .MetricsManager
+                            .ReportMetricsApdexValue(evnt.Application, "requestdurationapdex", 
+                                evnt.Duration.TotalMilliseconds, evnt.At, 
+                                conf.GetTolerableApdexValue(evnt.Application, "requestdurationapdex"))
+                            .ConfigureAwait(false);
+                        
+                        await conf
+                            .MetricsManager
+                            .ReportMetricsPerSecondValue(evnt.Application, "requestrate", 1,
                                 evnt.At)
                             .ConfigureAwait(false);
                     });
                 });
         }
 
-        public static DiagnosticsContext OpenDiagnosticsTimerContext(this DiagnosticsDataManager dataManager, 
+        public static DiagnosticsContext OpenDiagnosticsTimerContext(this DiagnosticsConfiguration settings, 
             IDictionary<string, object> environment, string step, string name)
         {
-            return new TimerDiagnosticsContext(dataManager, environment, step, name);
+            return new TimerDiagnosticsContext(settings.DataManager, settings.MetricsManager, environment, step, name);
         }
         
         private static bool ShouldIncludeInDiagnostics(PropertyInfo propertyInfo)
