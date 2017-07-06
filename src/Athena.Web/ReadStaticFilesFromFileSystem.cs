@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -8,9 +9,11 @@ namespace Athena.Web
     public class ReadStaticFilesFromFileSystem : StaticFileReader
     {
         private readonly IReadOnlyCollection<string> _defaultFiles;
+        private readonly Func<string, CacheData> _cacheStrategy;
 
-        public ReadStaticFilesFromFileSystem(params string[] defaultFiles)
+        public ReadStaticFilesFromFileSystem(Func<string, CacheData> cacheStrategy, params string[] defaultFiles)
         {
+            _cacheStrategy = cacheStrategy;
             _defaultFiles = defaultFiles;
         }
 
@@ -40,8 +43,7 @@ namespace Athena.Web
 
         private CacheData GetCacheDataFor(string file)
         {
-            //TODO:Determin this from outside somehow
-            return CacheData.NotCachable();
+            return _cacheStrategy(file);
         }
 
         private static bool Exists(string filePath)

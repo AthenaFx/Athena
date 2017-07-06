@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Athena.Configuration;
 using Athena.Logging;
 
@@ -26,8 +27,9 @@ namespace Athena.Web
                 .Child<WebApplicationSettings>(key)
                 .ConfigureParentWith((webSettings, webAppSettings, _) =>
                     webSettings.AddApplication(webAppSettings,
-                        (env, settings) => string.IsNullOrEmpty(settings.BaseUrl)
-                                           || env.GetRequest().Uri.LocalPath.StartsWith($"/{settings.BaseUrl}")))
+                        !string.IsNullOrEmpty(webAppSettings.BaseUrl) 
+                            ? (env, settings) => env.GetRequest().Uri.LocalPath.StartsWith($"/{settings.BaseUrl}") 
+                            : (Func<IDictionary<string, object>, WebApplicationSettings, bool>)null))
                 .Configure(x => x.WithName(name));
 
             appConfiguration.Child<WebApplicationRequestErrorSettings>($"{key}_error")

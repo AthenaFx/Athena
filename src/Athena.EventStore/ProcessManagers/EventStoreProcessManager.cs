@@ -5,22 +5,24 @@ using System.Linq;
 using System.Threading.Tasks;
 using Athena.ApplicationTimeouts;
 using Athena.EventStore.Serialization;
+using EventStore.ClientAPI;
 
 namespace Athena.EventStore.ProcessManagers
 {
-    public abstract class EventStoreProcessManager<TState, TIdentity> : ProcessManager where TState : new()
+    public abstract class EventStoreProcessManager<TState> : ProcessManager 
+        where TState : EventSourcedEntity, new()
     {
         public virtual string Name => GetType().FullName.Replace(".", "-").ToLower();
         
-        public virtual async Task Handle(DeSerializationResult evnt, IDictionary<string, object> environment,
-            ProcessStateLoader stateLoader, AthenaContext context)
+        public virtual async Task Handle(DeSerializationResult evnt, IDictionary<string, object> environment, 
+            AthenaContext context, EventSerializer serializer, IEventStoreConnection connection)
         {
             var timeoutManager = context.GetSetting<TimeoutManager>();
             
             var eventMappings = new Dictionary<Type, Tuple<Func<object, EventProcessingContext<TState>, Task>, 
-                Func<object, TIdentity>, string>>();
+                Func<object, string>, string>>();
             
-            var mappingContext = new ProcessManagerEventMappingContext<TState, TIdentity>(eventMappings);
+            var mappingContext = new ProcessManagerEventMappingContext<TState, string>(eventMappings);
 
             MapEvents(mappingContext);
 
@@ -33,7 +35,7 @@ namespace Athena.EventStore.ProcessManagers
 
                 var id = handlerMapping.Item2(evnt);
 
-                var state = await stateLoader.Load<TState, TIdentity>(id).ConfigureAwait(false);
+                var state = await connection.Load<TState>(id, serializer).ConfigureAwait(false);
                 
                 if(state == null)
                     continue;
@@ -50,15 +52,15 @@ namespace Athena.EventStore.ProcessManagers
         public IReadOnlyDictionary<Type, string> GetEventMappings()
         {
             var eventMappings = new Dictionary<Type, Tuple<Func<object, EventProcessingContext<TState>, Task>, 
-                Func<object, TIdentity>, string>>();
+                Func<object, string>, string>>();
             
-            var mappingContext = new ProcessManagerEventMappingContext<TState, TIdentity>(eventMappings);
+            var mappingContext = new ProcessManagerEventMappingContext<TState, string>(eventMappings);
 
             MapEvents(mappingContext);
 
             return new ReadOnlyDictionary<Type, string>(eventMappings.ToDictionary(x => x.Key, x => x.Value.Item3));
         }
 
-        protected abstract void MapEvents(ProcessManagerEventMappingContext<TState, TIdentity> mappingContext);
+        protected abstract void MapEvents(ProcessManagerEventMappingContext<TState, string> mappingContext);
     }
 }

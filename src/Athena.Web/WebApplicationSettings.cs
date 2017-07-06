@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using Athena.Authorization;
 using Athena.Binding;
@@ -34,6 +36,9 @@ namespace Athena.Web
             = (settings, bootstrapper) => DefaultRouteConventions
                 .BuildRoutes(x => string.IsNullOrEmpty(settings.BaseUrl) ? x : $"{settings.BaseUrl}/{x}",
                     bootstrapper.ApplicationAssemblies.ToArray());
+
+        private readonly Func<string, CacheData> _staticFileCacheStrategy = 
+            x => CacheData.UsingEtag(File.GetLastWriteTimeUtc(x).ToString(CultureInfo.InvariantCulture));
 
         public string Name { get; private set; }
 
@@ -115,7 +120,7 @@ namespace Athena.Web
         {
             var fileHandlers = new List<StaticFileReader>
             {
-                new ReadStaticFilesFromFileSystem("index.html", "index.htm")
+                new ReadStaticFilesFromFileSystem(_staticFileCacheStrategy, "index.html", "index.htm")
             };
 
             var routers = new List<EnvironmentRouter>

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -10,7 +12,9 @@ namespace Athena.Authorization
     public class MethodRouteConventionalAuthorizer : RouteAuthorizer<MethodResourceRouterResult>
     {
         private readonly IReadOnlyCollection<EnvironmentDataBinder> _environmentDataBinders;
-
+        private static readonly ConcurrentDictionary<Type, MethodInfo> AuthorizeMethods =
+            new ConcurrentDictionary<Type, MethodInfo>();
+        
         public MethodRouteConventionalAuthorizer(IReadOnlyCollection<EnvironmentDataBinder> environmentDataBinders)
         {
             _environmentDataBinders = environmentDataBinders;
@@ -28,33 +32,23 @@ namespace Athena.Authorization
         protected virtual async Task<bool> ExecuteMethod(string methodName, object instance,
             IDictionary<string, object> environment)
         {
-            //TODO:Cache methods
-            var methodInfo = instance
-                .GetType()
-                .GetMethods()
-                .FirstOrDefault(x => x.Name == methodName
-                                     && (x.ReturnType == typeof(bool) || x.ReturnType == typeof(Task<bool>)));
+            var methodInfo = AuthorizeMethods.GetOrAdd(instance.GetType(), x => x.GetMethods()
+                .FirstOrDefault(y => y.Name == methodName
+                                     && (y.ReturnType == typeof(bool) || y.ReturnType == typeof(Task<bool>))));
 
             if(methodInfo == null)
                 return true;
 
-            var parameters = methodInfo.GetParameters();
-            var methodArguments = new List<object>();
+            var result = await methodInfo.CompileAndExecute<object>(instance,
+                async x => await _environmentDataBinders.Bind(x, environment).ConfigureAwait(false))
+                .ConfigureAwait(false);
 
-            foreach (var parameter in parameters)
-            {
-                methodArguments.Add(await _environmentDataBinders.Bind(parameter.ParameterType, environment)
-                    .ConfigureAwait(false));
-            }
-
-            var methodResult = methodInfo.Invoke(instance, methodArguments.ToArray());
-
-            var taskResult = methodResult as Task<bool>;
+            var taskResult = result as Task<bool>;
 
             if (taskResult == null)
-                return (bool)methodResult;
+                return (bool)result;
 
-            return await taskResult;
+            return await taskResult.ConfigureAwait(false);
         }
     }
 }

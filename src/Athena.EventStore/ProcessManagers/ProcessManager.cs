@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Athena.EventStore.Serialization;
+using EventStore.ClientAPI;
 
 namespace Athena.EventStore.ProcessManagers
 {
@@ -9,8 +10,8 @@ namespace Athena.EventStore.ProcessManagers
     {
         string Name { get; }
 
-        Task Handle(DeSerializationResult evnt, IDictionary<string, object> environment,
-            ProcessStateLoader stateLoader, AthenaContext context);
+        Task Handle(DeSerializationResult evnt, IDictionary<string, object> environment, AthenaContext context,
+            EventSerializer serializer, IEventStoreConnection connection);
         IEnumerable<string> GetInterestingStreams();
         IReadOnlyDictionary<Type, string> GetEventMappings();
     }

@@ -23,6 +23,11 @@ namespace Athena.Web.Caching
             return new CacheData($"max-age={time.Seconds}");
         }
 
+        public static CacheData UsingEtag(string etag)
+        {
+            return new CacheData("", etag);
+        }
+
         public CacheData WithEtag(string etag)
         {
             return new CacheData(CacheControl, etag);

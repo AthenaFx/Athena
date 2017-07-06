@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 using Athena.Binding;
@@ -10,6 +12,12 @@ namespace Athena.Resources
     public class MethodResourceExecutor : ResourceExecutor
     {
         private readonly IReadOnlyCollection<EnvironmentDataBinder> _environmentDataBinders;
+
+        private static readonly MethodInfo HandleAsyncMethod = typeof(MethodResourceExecutor)
+            .GetMethod("HandleAsync", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        private static readonly ConcurrentDictionary<Type, MethodInfo> HandleAsyncMethods =
+            new ConcurrentDictionary<Type, MethodInfo>();
 
         public MethodResourceExecutor(IReadOnlyCollection<EnvironmentDataBinder> environmentDataBinders)
         {
@@ -37,23 +45,14 @@ namespace Athena.Resources
         protected virtual async Task<object> ExecuteMethod(MethodInfo methodInfo, object instance,
             IDictionary<string, object> environment)
         {
-            var parameters = methodInfo.GetParameters();
-            var methodArguments = new List<object>();
+            var result = await methodInfo.CompileAndExecute<object>(instance,
+                    async x => await _environmentDataBinders.Bind(x, environment).ConfigureAwait(false))
+                .ConfigureAwait(false);
 
-            foreach (var parameter in parameters)
-            {
-                methodArguments.Add(await _environmentDataBinders.Bind(parameter.ParameterType, environment)
-                    .ConfigureAwait(false));
-            }
-            
-            Logger.Write(LogLevel.Debug, $"Collected {methodArguments.Count} method arguments");
-
-            var methodResult = methodInfo.Invoke(instance, methodArguments.ToArray());
-
-            var taskResult = methodResult as Task;
+            var taskResult = result as Task;
 
             if (taskResult == null)
-                return methodResult;
+                return result;
 
             if (taskResult.GetType() == typeof(Task))
             {
@@ -64,10 +63,9 @@ namespace Athena.Resources
 
             var returnType = taskResult.GetType().GetGenericArguments()[0];
 
-            return await (Task<object>) GetType()
-                .GetMethod("HandleAsync", BindingFlags.Instance | BindingFlags.NonPublic)
-                .MakeGenericMethod(returnType)
-                .Invoke(this, new object[] {taskResult});
+            return await (await HandleAsyncMethods.GetOrAdd(returnType, x => HandleAsyncMethod.MakeGenericMethod(x))
+                .CompileAndExecute<Task<object>>(this, x => Task.FromResult<object>(taskResult))
+                .ConfigureAwait(false)).ConfigureAwait(false);
         }
 
         protected async Task<object> HandleAsync<T>(Task<T> task)
