@@ -13,7 +13,7 @@ namespace Athena.Resources
     {
         private readonly IReadOnlyCollection<EnvironmentDataBinder> _environmentDataBinders;
 
-        private static readonly MethodInfo HandleAsyncMethod = typeof(MethodResourceExecutor)
+        private static readonly MethodInfo HandleAsyncMethod = typeof(MethodResourceExecutor).GetTypeInfo()
             .GetMethod("HandleAsync", BindingFlags.Instance | BindingFlags.NonPublic);
 
         private static readonly ConcurrentDictionary<Type, MethodInfo> HandleAsyncMethods =
@@ -61,7 +61,7 @@ namespace Athena.Resources
                 return null;
             }
 
-            var returnType = taskResult.GetType().GetGenericArguments()[0];
+            var returnType = taskResult.GetType().GetTypeInfo().GetGenericArguments()[0];
 
             return await (await HandleAsyncMethods.GetOrAdd(returnType, x => HandleAsyncMethod.MakeGenericMethod(x))
                 .CompileAndExecute<Task<object>>(this, x => Task.FromResult<object>(taskResult))

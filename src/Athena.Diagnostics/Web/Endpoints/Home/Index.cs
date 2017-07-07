@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
-using Athena.Diagnostics;
+using Athena.Web;
 
-namespace Athena.Web.Diagnostics.Endpoints.Home
+namespace Athena.Diagnostics.Web.Endpoints.Home
 {
     public class Index
     {

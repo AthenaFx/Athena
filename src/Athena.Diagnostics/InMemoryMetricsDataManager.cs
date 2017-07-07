@@ -21,13 +21,15 @@ namespace Athena.Diagnostics
             _saveDataFor = saveDataFor;
         }
 
-        public Task ReportMetricsTotalValue(string application, string key, double value, DateTime at)
+        public Task ReportMetricsTotalValue(string application, string key, double value, DateTime at,
+            IDictionary<string, object> environment)
         {
             return ReportMetricsValue(application, key, value, at, 
                 (totalValue, items, startAt, endAt) => totalValue / items);
         }
 
-        public Task ReportMetricsPerSecondValue(string application, string key, double value, DateTime at)
+        public Task ReportMetricsPerSecondValue(string application, string key, double value, DateTime at,
+            IDictionary<string, object> environment)
         {
             return ReportMetricsValue(application, key, value, at, (totalValue, items, startAt, endAt) =>
             {
@@ -37,7 +39,8 @@ namespace Athena.Diagnostics
             });
         }
 
-        public Task ReportMetricsApdexValue(string application, string key, double value, DateTime at, double tolerable)
+        public Task ReportMetricsApdexValue(string application, string key, double value, DateTime at, double tolerable,
+            IDictionary<string, object> environment)
         {
             var wasTolerable = value <= tolerable;
 

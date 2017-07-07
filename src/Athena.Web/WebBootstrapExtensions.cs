@@ -25,7 +25,7 @@ namespace Athena.Web
             var appConfiguration = bootstrapper
                 .Part<WebApplicationsRouterSettings>()
                 .Child<WebApplicationSettings>(key)
-                .ConfigureParentWith((webSettings, webAppSettings, _) =>
+                .ConfigureParentWith((webSettings, webAppSettings, _) => webAppSettings.Disabled ? webSettings :
                     webSettings.AddApplication(webAppSettings,
                         !string.IsNullOrEmpty(webAppSettings.BaseUrl) 
                             ? (env, settings) => env.GetRequest().Uri.LocalPath.StartsWith($"/{settings.BaseUrl}") 

@@ -24,7 +24,7 @@ namespace Athena.Diagnostics
         {
             Logger.Write(LogLevel.Debug, $"Starting to diagnose {_nextItem}");
 
-            var context = _settings.OpenDiagnosticsTimerContext(environment, "Middlewares", _nextItem);
+            var context = _settings.OpenDiagnosticsTimerContext(environment, "middlewares", _nextItem);
 
             await _next(environment).ConfigureAwait(false);
 

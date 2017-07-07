@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Athena.Logging;
@@ -31,7 +32,7 @@ namespace Athena.Consul.Consensus
             return this;
         }
 
-        public Task Start()
+        public Task Start(AthenaContext context)
         {
             Logger.Write(LogLevel.Debug, $"Starting leader election for {Name}");
             
@@ -39,7 +40,7 @@ namespace Athena.Consul.Consensus
             
             _lock = Client.CreateLock($"service/{Name}/leader");
 
-            StartLeaderElection();
+            StartLeaderElection(context);
             
             return Task.CompletedTask;
         }
@@ -56,49 +57,55 @@ namespace Athena.Consul.Consensus
             return Task.CompletedTask;
         }
         
-        private void StartLeaderElection()
+        private void StartLeaderElection(AthenaContext context)
         {
             var cancellationToken = _cancellationTokenSource.Token;
             
-            Task.Run(async () => await AcquireLock(_lock, cancellationToken).ConfigureAwait(false), cancellationToken)
+            Task.Run(async () => await AcquireLock(_lock, cancellationToken, context).ConfigureAwait(false), cancellationToken)
                 .ContinueWith(t =>
                 {
                     (t.Exception ?? new AggregateException()).Handle(ex => true);
                     
                     Logger.Write(LogLevel.Warn, "Consul leader election failed", t.Exception);
 
-                    StartLeaderElection();
+                    StartLeaderElection(context);
                 }, TaskContinuationOptions.OnlyOnFaulted);
         }
         
-        private async Task AcquireLock(IDistributedLock consulLock, CancellationToken cancellationToken)
+        private async Task AcquireLock(IDistributedLock consulLock, CancellationToken cancellationToken,
+            AthenaContext context)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                if (!consulLock.IsHeld)
+                var environment = new Dictionary<string, object>();
+
+                using (environment.EnterApplication(context, "consulleaderelection"))
                 {
-                    if (CurrentRole != NodeRole.Follower)
+                    if (!consulLock.IsHeld)
                     {
-                        Logger.Write(LogLevel.Debug, $"Node became follower of {Name}");
+                        if (CurrentRole != NodeRole.Follower)
+                        {
+                            Logger.Write(LogLevel.Debug, $"Node became follower of {Name}");
                         
-                        EventPublishing.Publish(new NodeRoleTransitioned(NodeRole.Follower));
-                        CurrentRole = NodeRole.Follower;
+                            EventPublishing.Publish(new NodeRoleTransitioned(NodeRole.Follower), environment);
+                            CurrentRole = NodeRole.Follower;
+                        }
+
+                        await consulLock.Acquire(cancellationToken).ConfigureAwait(false);
                     }
 
-                    await consulLock.Acquire(cancellationToken).ConfigureAwait(false);
-                }
-
-                while (!cancellationToken.IsCancellationRequested && consulLock.IsHeld)
-                {
-                    if (CurrentRole != NodeRole.Leader)
+                    while (!cancellationToken.IsCancellationRequested && consulLock.IsHeld)
                     {
-                        Logger.Write(LogLevel.Debug, $"Node became leader of {Name}");
+                        if (CurrentRole != NodeRole.Leader)
+                        {
+                            Logger.Write(LogLevel.Debug, $"Node became leader of {Name}");
                         
-                        EventPublishing.Publish(new NodeRoleTransitioned(NodeRole.Leader));
-                        CurrentRole = NodeRole.Leader;
-                    }
+                            EventPublishing.Publish(new NodeRoleTransitioned(NodeRole.Leader), environment);
+                            CurrentRole = NodeRole.Leader;
+                        }
 
-                    await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
+                        await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
+                    }   
                 }
             }
         }

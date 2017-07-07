@@ -48,7 +48,7 @@ namespace Athena.Web.Routing
                 .ToDictionary(x => x.Key, x => string.Join(", ", x.Select(y => y.Value)));
         }
 
-        private IEnumerable<KeyValuePair<string, string>> GetAvailableRoutesFor(Route route)
+        private static IEnumerable<KeyValuePair<string, string>> GetAvailableRoutesFor(Route route)
         {
             var httpMethods = route.AvailableHttpMethods.ToList();
 

@@ -47,7 +47,7 @@ namespace Athena.CommandHandling
         {
             var methods = applicationAssemblies
                 .SelectMany(x => x.GetTypes())
-                .SelectMany(x => x.GetMethods(BindingFlags.Instance | BindingFlags.Public))
+                .SelectMany(x => x.GetTypeInfo().GetMethods(BindingFlags.Instance | BindingFlags.Public))
                 .Where(filter)
                 .ToList();
 

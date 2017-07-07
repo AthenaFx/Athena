@@ -247,30 +247,33 @@ namespace Athena.EventStore.Projections
 
             if (!successfullEvents.Any())
                 return;
-
-            try
+            
+            var requestEnvironment = new Dictionary<string, object>
             {
-                var requestEnvironment = new Dictionary<string, object>
+                ["context"] = new ProjectionContext(projection, eventsList, handled)
+            };
+
+            using (requestEnvironment.EnterApplication(context, "runprojections"))
+            {
+                try
                 {
-                    ["context"] = new ProjectionContext(projection, eventsList, handled)
-                };
-                
-                Logger.Write(LogLevel.Debug,
-                    $"Execution projections application {Name} for {projection}");
+                    Logger.Write(LogLevel.Debug,
+                        $"Execution projections application {Name} for {projection}");
 
-                await context.Execute(Name, requestEnvironment).ConfigureAwait(false);
+                    await context.Execute(Name, requestEnvironment).ConfigureAwait(false);
                 
-                Logger.Write(LogLevel.Debug,
-                    $"Projection, \"{projection.Name}\", executed. Application {Name}");
-            }
-            catch (Exception ex)
-            {
-                Logger.Write(LogLevel.Error, 
-                    $"Projection {projection.GetType().FullName} has failing handlers. Stopping...", ex);
+                    Logger.Write(LogLevel.Debug,
+                        $"Projection, \"{projection.Name}\", executed. Application {Name}");
+                }
+                catch (Exception ex)
+                {
+                    Logger.Write(LogLevel.Error, 
+                        $"Projection {projection.GetType().FullName} has failing handlers. Stopping...", ex);
                 
-                StopProjection(projection);
+                    StopProjection(projection);
                 
-                EventPublishing.Publish(new ProjectionFailed(projection.GetType(), ex));
+                    EventPublishing.Publish(new ProjectionFailed(projection.GetType(), ex), requestEnvironment);
+                }   
             }
         }
     }

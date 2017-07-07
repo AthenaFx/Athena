@@ -9,7 +9,7 @@ namespace Athena.Binding
     {
         public Task<DataBinderResult> Bind(Type to, IDictionary<string, object> environment)
         {
-            return Task.FromResult(typeof(IDictionary<string, object>).IsAssignableFrom(to) 
+            return Task.FromResult(typeof(IDictionary<string, object>).GetTypeInfo().IsAssignableFrom(to) 
                 ? new DataBinderResult(environment, true) 
                 : new DataBinderResult(null, false));
         }

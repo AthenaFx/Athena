@@ -14,13 +14,15 @@ namespace Athena.Diagnostics
         private readonly MetricsDataManager _metricsDataManager;
         private readonly string _step;
         private readonly string _name;
+        private readonly IDictionary<string, object> _environment;
         
         public TimerDiagnosticsContext(DiagnosticsDataManager dataManager, MetricsDataManager metricsDataManager, 
-            IDictionary<string, object> environment, string step, string name)
+            IDictionary<string, object> environment, string step, string name, IDictionary<string, object> environment1)
         {
             _dataManager = dataManager;
             _step = step;
             _name = name;
+            _environment = environment1;
             _metricsDataManager = metricsDataManager;
             _timer = Stopwatch.StartNew();
             _application = environment.GetCurrentApplication();
@@ -32,15 +34,15 @@ namespace Athena.Diagnostics
             _timer.Stop();
             
             await _dataManager
-                .AddDiagnostics(_application, "Requests", _requestId,
+                .AddDiagnostics(_application, "requests", _requestId,
                     new DiagnosticsData(_step, new Dictionary<string, string>
                     {
                         [_name] = _timer.Elapsed.ToString()
-                    })).ConfigureAwait(false);
+                    }), _environment).ConfigureAwait(false);
 
             await _metricsDataManager
                 .ReportMetricsTotalValue(_application, $"{_name}duration", _timer.Elapsed.TotalMilliseconds, 
-                    DateTime.UtcNow)
+                    DateTime.UtcNow, _environment)
                 .ConfigureAwait(false);
         }
     }

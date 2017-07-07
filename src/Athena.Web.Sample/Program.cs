@@ -4,8 +4,8 @@ using System.Threading.Tasks;
 using Athena.CommandHandling;
 using Athena.Configuration;
 using Athena.Diagnostics;
+using Athena.Diagnostics.Web;
 using Athena.Logging;
-using Athena.Web.Diagnostics;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Owin;
@@ -21,12 +21,10 @@ namespace Athena.Web.Sample
         private static async Task MainAsync()
         {
             var athenaContext = await AthenaApplications
-                .From("local", typeof(Program).GetTypeInfo().Assembly)
+                .From("dev", typeof(Program).GetTypeInfo().Assembly)
                 .LogToConsole(LogLevel.Debug)
                 .UsingWebApplication()
                 .EnableCommandSender()
-                .EnableDiagnostics()
-                    .WithWebUi()
                 .Build();
             
             var host = new WebHostBuilder()

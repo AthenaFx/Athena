@@ -41,12 +41,19 @@ namespace Athena.Web
             x => CacheData.UsingEtag(File.GetLastWriteTimeUtc(x).ToString(CultureInfo.InvariantCulture));
 
         public string Name { get; private set; }
-
         public string BaseUrl { get; private set; }
-
+        public bool Disabled { get; private set; }
+        
         internal WebApplicationSettings WithName(string name)
         {
             Name = name;
+
+            return this;
+        }
+
+        public WebApplicationSettings Disable()
+        {
+            Disabled = true;
 
             return this;
         }

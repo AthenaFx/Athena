@@ -35,7 +35,7 @@ namespace Athena
         protected virtual async Task<bool> ExecuteMethod(string methodName, object instance,
             IDictionary<string, object> environment)
         {
-            var methodInfo = ExistsMethods.GetOrAdd(instance.GetType(), x => x.GetMethods()
+            var methodInfo = ExistsMethods.GetOrAdd(instance.GetType(), x => x.GetTypeInfo().GetMethods()
                 .FirstOrDefault(y => y.Name == methodName
                                      && (y.ReturnType == typeof(bool) || y.ReturnType == typeof(Task<bool>))));
 
@@ -51,7 +51,7 @@ namespace Athena
             if (taskResult == null)
                 return (bool)result;
 
-            return await taskResult;
+            return await taskResult.ConfigureAwait(false);
         }
     }
 }

@@ -2,9 +2,8 @@
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Athena.Diagnostics;
 
-namespace Athena.Web.Diagnostics.Endpoints.Home
+namespace Athena.Diagnostics.Web.Endpoints.Home
 {
     public class Data
     {

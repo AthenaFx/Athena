@@ -2,8 +2,8 @@
   <PropertyGroup>
     <TargetFramework>netstandard1.6</TargetFramework>
     <DebugType>portable</DebugType>
-    <AssemblyName>Athena.Web</AssemblyName>
-    <PackageId>Athena.Web</PackageId>
+    <AssemblyName>Athena.Diagnostics</AssemblyName>
+    <PackageId>Athena.Diagnostics</PackageId>
     <NetStandardImplicitPackageVersion>1.6.0</NetStandardImplicitPackageVersion>
     <PackageTargetFallback>$(PackageTargetFallback);dnxcore50</PackageTargetFallback>
     <GenerateAssemblyTitleAttribute>false</GenerateAssemblyTitleAttribute>
@@ -14,12 +14,10 @@
     <GenerateAssemblyCopyrightAttribute>false</GenerateAssemblyCopyrightAttribute>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Athena\Athena.csproj">
-      <Project>{2f488004-813a-4cbd-938a-4a7fc60bfe98}</Project>
-      <Name>Athena</Name>
-    </ProjectReference>
+    <ProjectReference Include="..\Athena.Web\Athena.Web.csproj" />
+    <ProjectReference Include="..\Athena\Athena.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+    <PackageReference Include="System.Reactive" Version="4.0.0-preview00001" />
   </ItemGroup>
 </Project>

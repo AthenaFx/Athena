@@ -24,7 +24,7 @@ namespace Athena
             if(!includeInterfaces)
                 yield break;
 
-            foreach (var @interface in type.GetInterfaces())
+            foreach (var @interface in type.GetTypeInfo().GetInterfaces())
                 yield return @interface;
         }
     }

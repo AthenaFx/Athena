@@ -42,7 +42,7 @@ namespace Athena.Web.Routing
             var availableMethods = availableAssemblies
                 .SelectMany(x => x.GetTypes())
                 .Where(filter)
-                .SelectMany(x => x.GetMethods())
+                .SelectMany(x => x.GetTypeInfo().GetMethods())
                 .Where(x => AvailableMethodNames.Contains(x.Name))
                 .ToList();
 
@@ -64,6 +64,7 @@ namespace Athena.Web.Routing
                     .GetParameters()
                     .Any(x => x.Name.Equals("Slug", StringComparison.OrdinalIgnoreCase)
                               || x.ParameterType
+                                  .GetTypeInfo()
                                   .GetProperties()
                                   .Any(y => y.Name.Equals("Slug", StringComparison.OrdinalIgnoreCase)));
 
@@ -80,6 +81,7 @@ namespace Athena.Web.Routing
                     .GetParameters()
                     .Any(x => x.Name.Equals("Id", StringComparison.OrdinalIgnoreCase)
                               || x.ParameterType
+                                  .GetTypeInfo()
                                   .GetProperties()
                                   .Any(y => y.Name.Equals("Id", StringComparison.OrdinalIgnoreCase)));
 
@@ -92,6 +94,7 @@ namespace Athena.Web.Routing
                         .GetParameters()
                         .Any(x => x.Name.Equals(extraUrlParameter, StringComparison.OrdinalIgnoreCase)
                                   || x.ParameterType
+                                      .GetTypeInfo()
                                       .GetProperties()
                                       .Any(y => y.Name.Equals(extraUrlParameter, StringComparison.OrdinalIgnoreCase)));
                     

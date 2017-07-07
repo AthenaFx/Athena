@@ -17,7 +17,7 @@ namespace Athena.Consul.Consensus
 
             return bootstrapper
                 .Part<ConsulLeaderElector>()
-                .OnStartup((item, context) => item.Start())
+                .OnStartup((item, context) => item.Start(context))
                 .OnShutdown((item, context) => item.Stop())
                 .Configure(x => x.WithName(bootstrapper.ApplicationName));
         }
@@ -30,7 +30,7 @@ namespace Athena.Consul.Consensus
                 EventPublishing.OpenChannel<NodeRoleTransitioned>()
                     .Select(async evnt =>
                     {
-                        var shouldRun = evnt.NewRole == role;
+                        var shouldRun = evnt.Event.NewRole == role;
 
                         await changeStatus(shouldRun).ConfigureAwait(false);
                     }).Subscribe();

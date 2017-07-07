@@ -5,7 +5,8 @@ namespace Athena.Diagnostics
 {
     public interface DiagnosticsDataManager
     {
-        Task AddDiagnostics(string application, string type, string step, DiagnosticsData data);
+        Task AddDiagnostics(string application, string type, string step, DiagnosticsData data,
+            IDictionary<string, object> environment);
         
         Task<IEnumerable<string>> GetApplications();
         

@@ -19,7 +19,7 @@ namespace Athena.Web.ModelBinding
 
         public bool Matches(Type type)
         {
-            return type.GetConstructors().Count(x => x.GetParameters().Length == 0) == 1;
+            return type.GetTypeInfo().GetConstructors().Count(x => x.GetParameters().Length == 0) == 1;
         }
 
         public async Task<DataBinderResult> Bind(Type type, BindingContext bindingContext)
@@ -27,6 +27,7 @@ namespace Athena.Web.ModelBinding
             var instance = Activator.CreateInstance(type);
 
             var binderTasks = type
+                .GetTypeInfo()
                 .GetProperties()
                 .Where(x => x.CanWrite)
                 .Select(x => _propertyBinders.Bind(instance, x, bindingContext));

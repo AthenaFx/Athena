@@ -111,7 +111,7 @@ namespace Athena.EventStore.ProcessManagers
 
         public Task Stop()
         {
-            Logger.Write(LogLevel.Debug, $"Stopping process managers");
+            Logger.Write(LogLevel.Debug, "Stopping process managers");
             
             _running = false;
 
@@ -182,7 +182,7 @@ namespace Athena.EventStore.ProcessManagers
 
             if (!evnt.Successful)
             {
-                Logger.Write(LogLevel.Info, $"Event deserialization failed", evnt.Error);
+                Logger.Write(LogLevel.Info, "Event deserialization failed", evnt.Error);
                 
                 subscription.Fail(evnt.OriginalEvent, PersistentSubscriptionNakEventAction.Unknown, evnt.Error.Message);
                 return;

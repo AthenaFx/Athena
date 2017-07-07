@@ -11,7 +11,7 @@ namespace Athena.ApplicationTimeouts
 
             return bootstrapper
                 .Part<TimeoutManager>()
-                .OnStartup((timeoutManager, context) => timeoutManager.Start())
+                .OnStartup((timeoutManager, context) => timeoutManager.Start(context))
                 .OnShutdown((timeoutManager, context) => timeoutManager.Stop());
         }
     }

@@ -29,12 +29,12 @@ namespace Athena.Diagnostics
                 var hasError = _hasError(environment);
 
                 await _dataManager.ReportMetricsTotalValue(environment.GetCurrentApplication(),
-                    "errorrate", hasError ? 1 : 0, DateTime.UtcNow).ConfigureAwait(false);
+                    "errorrate", hasError ? 1 : 0, DateTime.UtcNow, environment).ConfigureAwait(false);
             }
             catch (Exception)
             {
                 await _dataManager.ReportMetricsTotalValue(environment.GetCurrentApplication(),
-                    "errorrate", 1, DateTime.UtcNow).ConfigureAwait(false);
+                    "errorrate", 1, DateTime.UtcNow, environment).ConfigureAwait(false);
                 
                 throw;
             }

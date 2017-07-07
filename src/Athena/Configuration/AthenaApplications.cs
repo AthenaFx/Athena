@@ -29,10 +29,12 @@ namespace Athena.Configuration
             ApplicationAssemblies = applicationAssemblies;
             _timer = timer;
             ApplicationName = applicationName;
+            SetupEnvironment = new Dictionary<string, object>();
         }
         
         public string ApplicationName { get; }
         public string Environment { get; }
+        public IDictionary<string, object> SetupEnvironment { get; }
         public IReadOnlyCollection<Assembly> ApplicationAssemblies { get; }
 
         public PartConfiguration<TPart> Part<TPart>(string key = null) where TPart : class, new()
@@ -119,7 +121,7 @@ namespace Athena.Configuration
                     .Select(x => x.Value.RunSetupsFor(evnt, this)))
                 .ConfigureAwait(false);
 
-            EventPublishing.Publish(evnt);
+            EventPublishing.Publish(evnt, SetupEnvironment);
         }
 
         private async Task<Tuple<string, AppFunc>> CompileApplication(string name, AppFunctionBuilder builder)
@@ -157,10 +159,10 @@ namespace Athena.Configuration
                 {
                     var typeInfo = x.GetTypeInfo();
 
-                    return componentType.IsAssignableFrom(x)
+                    return componentType.GetTypeInfo().IsAssignableFrom(x)
                            && !typeInfo.IsAbstract
                            && !typeInfo.IsInterface
-                           && x.GetConstructors().Any(y => !y.GetParameters().Any() && y.IsPublic);
+                           && x.GetTypeInfo().GetConstructors().Any(y => !y.GetParameters().Any() && y.IsPublic);
                 })
                 .Select(Activator.CreateInstance)
                 .OfType<AthenaComponent>()

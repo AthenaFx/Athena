@@ -13,18 +13,19 @@ namespace Athena.Web.ModelBinding.PropertyBinders
 
         public CollectionPropertyBinder()
         {
-            AddMethods.OnMissing = type => type.GetMethod("Add");
+            AddMethods.OnMissing = type => type.GetTypeInfo().GetMethod("Add");
         }
 
         public bool Matches(PropertyInfo propertyInfo)
         {
-            return typeof(IEnumerable).IsAssignableFrom(propertyInfo.PropertyType) && propertyInfo.PropertyType != typeof(string);
+            return typeof(IEnumerable).GetTypeInfo().IsAssignableFrom(propertyInfo.PropertyType) 
+                   && propertyInfo.PropertyType != typeof(string);
         }
 
         public async Task<bool> Bind(object instance, PropertyInfo propertyInfo, BindingContext bindingContext)
         {
             var type = propertyInfo.PropertyType;
-            var itemType = type.GetGenericArguments()[0];
+            var itemType = type.GetTypeInfo().GetGenericArguments()[0];
 
             if (type.GetTypeInfo().IsInterface)
             {
@@ -35,20 +36,20 @@ namespace Athena.Web.ModelBinding.PropertyBinders
             var collection = currentCollection ?? Activator.CreateInstance(type);
             var collectionType = collection.GetType();
 
-            Func<Type, string, Task<bool>> addToCollection = async (typeToBind, prefix) =>
-                                                           {
-                                                               using (bindingContext.OpenChildContext(prefix))
-                                                               {
-                                                                   var addMethod = AddMethods[collectionType];
-                                                                   var result = await bindingContext.Bind(itemType).ConfigureAwait(false);
+            async Task<bool> AddToCollection(string prefix)
+            {
+                using (bindingContext.OpenChildContext(prefix))
+                {
+                    var addMethod = AddMethods[collectionType];
+                    var result = await bindingContext.Bind(itemType).ConfigureAwait(false);
 
-                                                                   if (!result.Success) return false;
-                                                                   
-                                                                   addMethod.Invoke(collection, new[] { result.Result });
+                    if (!result.Success) return false;
 
-                                                                   return true;
-                                                               }
-                                                           };
+                    addMethod.Invoke(collection, new[] {result.Result});
+
+                    return true;
+                }
+            }
 
             var formatString = string.Concat(propertyInfo.Name, "[{0}]_");
 
@@ -58,7 +59,7 @@ namespace Athena.Web.ModelBinding.PropertyBinders
             {
                 currentPrefix = string.Format(formatString, index);
                 index++;
-            } while (await addToCollection(itemType, currentPrefix).ConfigureAwait(false));
+            } while (await AddToCollection(currentPrefix).ConfigureAwait(false));
 
             propertyInfo.SetValue(instance, collection, null);
 

@@ -13,7 +13,8 @@ namespace Athena.Diagnostics
                 new ConcurrentDictionary<string,
                     ConcurrentDictionary<string, LurchTable<string, LurchList<DiagnosticsData>>>>();
         
-        public Task AddDiagnostics(string application, string type, string step, DiagnosticsData data)
+        public Task AddDiagnostics(string application, string type, string step, DiagnosticsData data,
+            IDictionary<string, object> environment)
         {
             var loweredApplication = (application ?? "").ToLower();
             var loweredType = (type ?? "").ToLower();

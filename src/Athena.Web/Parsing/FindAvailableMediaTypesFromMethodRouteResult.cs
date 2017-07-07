@@ -35,6 +35,7 @@ namespace Athena.Web.Parsing
         {
             var methodInfo = instance
                 .GetType()
+                .GetTypeInfo()
                 .GetMethods()
                 .FirstOrDefault(x => x.Name == methodName);
 
@@ -64,9 +65,10 @@ namespace Athena.Web.Parsing
                 return null;
             }
 
-            var returnType = taskResult.GetType().GetGenericArguments()[0];
+            var returnType = taskResult.GetType().GetTypeInfo().GetGenericArguments()[0];
 
             return await (Task<object>) GetType()
+                .GetTypeInfo()
                 .GetMethod("HandleAsync", new[] {taskResult.GetType()})
                 .MakeGenericMethod(returnType)
                 .Invoke(this, new object[] {taskResult});

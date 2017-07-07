@@ -76,7 +76,7 @@ namespace Athena.Configuration
                 timer.Stop();
 
                 EventPublishing.Publish(new ApplicationExecutedRequest(application,
-                    environment.GetRequestId(), timer.Elapsed, DateTime.UtcNow));
+                    environment.GetRequestId(), timer.Elapsed, DateTime.UtcNow), environment);
             }
             
             Logger.Write(LogLevel.Debug, $"Application executed {application}");
@@ -84,13 +84,18 @@ namespace Athena.Configuration
 
         public async Task ShutDown()
         {
-            Logger.Write(LogLevel.Debug, "Starting shutdown of application");
+            var environment = new Dictionary<string, object>();
             
-            EventPublishing.Publish(new ShutdownStarted(ApplicationName, Environment));
+            using (environment.EnterApplication(this, "shutdown"))
+            {
+                Logger.Write(LogLevel.Debug, "Starting shutdown of application");
+                
+                EventPublishing.Publish(new ShutdownStarted(ApplicationName, Environment), environment);
 
-            await Task.WhenAll(_configurations.Select(x => x.Value.Shutdown(this))).ConfigureAwait(false);
+                await Task.WhenAll(_configurations.Select(x => x.Value.Shutdown(this))).ConfigureAwait(false);
             
-            Logger.Write(LogLevel.Debug, "Applications shut down");
+                Logger.Write(LogLevel.Debug, "Applications shut down");
+            }
         }
     }
 }

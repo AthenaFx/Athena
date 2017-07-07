@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Athena.Logging;
@@ -18,7 +19,7 @@ namespace Athena.ApplicationTimeouts
         {
             Logger.Write(LogLevel.Debug, $"Requesting timeout at {at} ({message.GetType()})");
             
-            await _timeoutStore.Add(new TimeoutData(Guid.NewGuid(), message, at));
+            await _timeoutStore.Add(new TimeoutData(Guid.NewGuid(), message, at)).ConfigureAwait(false);
         }
 
         public TimeoutManager WithStore(TimeoutStore store)
@@ -35,7 +36,7 @@ namespace Athena.ApplicationTimeouts
             return this;
         }
 
-        public Task Start()
+        public Task Start(AthenaContext context)
         {            
             if(_timeoutStore == null)
                 return Task.CompletedTask;
@@ -44,7 +45,7 @@ namespace Athena.ApplicationTimeouts
             
             _tokenSource = new CancellationTokenSource();
 
-            StartCheckingTimeouts();
+            StartCheckingTimeouts(context);
             
             return Task.CompletedTask;
         }
@@ -56,58 +57,62 @@ namespace Athena.ApplicationTimeouts
             return Task.CompletedTask;
         }
 
-        private void StartCheckingTimeouts()
+        private void StartCheckingTimeouts(AthenaContext context)
         {
             var cancellationToken = _tokenSource.Token;
             
-            Task.Run(async () => await Poll(cancellationToken).ConfigureAwait(false), cancellationToken)
+            Task.Run(async () => await Poll(cancellationToken, context).ConfigureAwait(false), cancellationToken)
                 .ContinueWith(t =>
                 {
                     (t.Exception ?? new AggregateException()).Handle(ex => true);
                     
                     Logger.Write(LogLevel.Warn, "Timeout poll failed", t.Exception);
 
-                    StartCheckingTimeouts();
+                    StartCheckingTimeouts(context);
                 }, TaskContinuationOptions.OnlyOnFaulted);
         }
 
-        private async Task Poll(CancellationToken token)
+        private async Task Poll(CancellationToken token, AthenaContext context)
         {
             var startSlice = DateTime.UtcNow.AddYears(-10);
             var nextRetrieval = DateTime.UtcNow;
 
             while (!token.IsCancellationRequested)
             {
-                Logger.Write(LogLevel.Debug, "Polling for timeouts");
+                var environment = new Dictionary<string, object>();
+                using (environment.EnterApplication(context, "timeoutmanager"))
+                {
+                    Logger.Write(LogLevel.Debug, "Polling for timeouts");
                 
-                if (nextRetrieval > DateTime.UtcNow)
-                {
-                    await Task.Delay(_interval, token).ConfigureAwait(false);
-                    continue;
-                }
+                    if (nextRetrieval > DateTime.UtcNow)
+                    {
+                        await Task.Delay(_interval, token).ConfigureAwait(false);
+                        continue;
+                    }
 
-                var nextExpiredTimeout = await _timeoutStore.GetNextChunk(startSlice, x =>
-                {
-                    if (startSlice < x.Item2)
-                        startSlice = x.Item2;
+                    var nextExpiredTimeout = await _timeoutStore.GetNextChunk(startSlice, x =>
+                    {
+                        if (startSlice < x.Item2)
+                            startSlice = x.Item2;
 
-                    EventPublishing.Publish(x.Item1.Message);
+                        EventPublishing.Publish(x.Item1.Message, environment);
                     
-                    return Task.CompletedTask;
-                }).ConfigureAwait(false);
+                        return Task.CompletedTask;
+                    }).ConfigureAwait(false);
 
-                nextRetrieval = nextExpiredTimeout;
+                    nextRetrieval = nextExpiredTimeout;
 
-                lock (_lockObject)
-                {
-                    if (nextExpiredTimeout < nextRetrieval)
-                        nextRetrieval = nextExpiredTimeout;
+                    lock (_lockObject)
+                    {
+                        if (nextExpiredTimeout < nextRetrieval)
+                            nextRetrieval = nextExpiredTimeout;
+                    }
+
+                    var maxNextRetrieval = DateTime.UtcNow + TimeSpan.FromMinutes(1);
+
+                    if (nextRetrieval > maxNextRetrieval)
+                        nextRetrieval = maxNextRetrieval;   
                 }
-
-                var maxNextRetrieval = DateTime.UtcNow + TimeSpan.FromMinutes(1);
-
-                if (nextRetrieval > maxNextRetrieval)
-                    nextRetrieval = maxNextRetrieval;
             }
         }
     }
