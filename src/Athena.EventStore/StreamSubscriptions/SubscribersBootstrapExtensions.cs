@@ -1,30 +1,10 @@
-﻿using System.Threading.Tasks;
-using Athena.Configuration;
+﻿using Athena.Configuration;
 using Athena.Logging;
 
 namespace Athena.EventStore.StreamSubscriptions
 {
     public static class SubscribersBootstrapExtensions
-    {
-        public static PartConfiguration<RunStreamLiveSubscribers> UseEventStoreStreamLiveSubscribers(
-            this AthenaBootstrapper bootstrapper)
-        {
-            Logger.Write(LogLevel.Debug,
-                $"Enabling EventStore live subscriptions for application {bootstrapper.ApplicationName}");
-            
-            return bootstrapper
-                .Part<RunStreamLiveSubscribers>()
-                .OnSetup(async (config, context) =>
-                {
-                    Logger.Write(LogLevel.Debug,
-                        $"Configuring EventStore live subscriptions for application {context.ApplicationName}");
-                    
-                    await context.DefineApplication(config.Name, config.GetApplicationBuilder()).ConfigureAwait(false);
-                })
-                .OnStartup((config, context) => config.Start(context))
-                .OnShutdown((config, context) => config.Stop());
-        }
-        
+    {        
         public static PartConfiguration<RunStreamPersistentSubscribers> UseEventStoreStreamPersistentSubscribers(
             this AthenaBootstrapper bootstrapper)
         {

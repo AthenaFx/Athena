@@ -61,8 +61,8 @@ namespace Athena.Diagnostics
                     EventPublishing.OpenChannel<object>()
                         .Select(async evnt =>
                         {
-                            var data = IntrospectionExtensions.GetTypeInfo(evnt.Event
-                                    .GetType())
+                            var data = evnt.Event
+                                .GetType().GetTypeInfo()
                                 .GetProperties()
                                 .Where(ShouldIncludeInDiagnostics)
                                 .ToDictionary(x => x.Name, x => x.GetValue(evnt.Event).ToString());

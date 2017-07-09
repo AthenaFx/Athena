@@ -186,8 +186,8 @@ namespace Athena.EventStore.Projections
                         await positionHandler.GetLastEvent(projection.Name).ConfigureAwait(false), 
                         CatchUpSubscriptionSettings.Default,
                         (subscription, evnt) => messageProcessor.OnMessageArrived(GetSerializer().DeSerialize(evnt)),
-                        subscriptionDropped: async (subscription, reason, exception) => 
-                            await SubscriptionDropped(projection, reason, exception, context).ConfigureAwait(false));
+                        subscriptionDropped: (subscription, reason, exception) => 
+                            SubscriptionDropped(projection, reason, exception, context).GetAwaiter().GetResult());
 
                     _projectionSubscriptions[projection.Name] 
                         = new ProjectionSubscription(messageSubscription, messageHandlerSubscription, eventStoreSubscription);

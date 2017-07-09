@@ -1,4 +1,4 @@
-namespace Athena.Configuration
+﻿namespace Athena.Configuration
 {
     public interface AthenaComponent
     {

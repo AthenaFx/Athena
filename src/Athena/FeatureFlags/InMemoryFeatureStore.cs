@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Athena.FeatureFlags
@@ -16,12 +17,15 @@ namespace Athena.FeatureFlags
 
             while (parts.Count > 0)
             {
-                var currentFeature = string.Join("-", parts);
+                var currentFeature = string.Join("-", parts.Reverse());
 
                 FeatureFlagCalculator calculator;
                 if (!_features.TryGetValue(currentFeature, out calculator))
+                {
+                    parts.Pop();
                     continue;
-
+                }
+                
                 var available = calculator.IsOn(environment);
 
                 if (!available)

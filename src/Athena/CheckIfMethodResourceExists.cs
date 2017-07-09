@@ -13,8 +13,8 @@ namespace Athena
     {
         private readonly IReadOnlyCollection<EnvironmentDataBinder> _environmentDataBinders;
 
-        private static readonly ConcurrentDictionary<Type, MethodInfo> ExistsMethods =
-            new ConcurrentDictionary<Type, MethodInfo>();
+        private static readonly ConcurrentDictionary<MethodInfo, MethodInfo> ExistsMethods =
+            new ConcurrentDictionary<MethodInfo, MethodInfo>();
 
         public CheckIfMethodResourceExists(IReadOnlyCollection<EnvironmentDataBinder> environmentDataBinders)
         {
@@ -28,15 +28,15 @@ namespace Athena
             if(methodRouterResult == null)
                 return true;
 
-            return await ExecuteMethod($"{methodRouterResult.Method.Name}Exists",
+            return await ExecuteMethod(methodRouterResult.Method,
                 methodRouterResult.Instance, environment).ConfigureAwait(false);
         }
 
-        protected virtual async Task<bool> ExecuteMethod(string methodName, object instance,
+        protected virtual async Task<bool> ExecuteMethod(MethodInfo routedTo, object instance,
             IDictionary<string, object> environment)
         {
-            var methodInfo = ExistsMethods.GetOrAdd(instance.GetType(), x => x.GetTypeInfo().GetMethods()
-                .FirstOrDefault(y => y.Name == methodName
+            var methodInfo = ExistsMethods.GetOrAdd(routedTo, x => x.DeclaringType.GetTypeInfo().GetMethods()
+                .FirstOrDefault(y => y.Name == $"{x.Name}Exists"
                                      && (y.ReturnType == typeof(bool) || y.ReturnType == typeof(Task<bool>))));
 
             if(methodInfo == null)

@@ -22,16 +22,17 @@ namespace Athena.EventStore.StreamSubscriptions
 
         private bool _running;
         private IEventStoreConnection _connection;
-        
+
         private readonly ICollection<Transaction> _transactions = new List<Transaction>();
         private readonly ICollection<Tuple<string, int>> _streams = new List<Tuple<string, int>>();
         private readonly ICollection<MetaDataSupplier> _metaDataSuppliers = new List<MetaDataSupplier>();
         private EventSerializer _serializer = new JsonEventSerializer();
-        private EventStoreConnectionString _connectionString 
+
+        private EventStoreConnectionString _connectionString
             = new EventStoreConnectionString("Ip=127.0.0.1;Port=1113;UserName=admin;Password=changeit;");
-        
+
         private Func<Type, IDictionary<string, object>, object> _createInstance = (x, y) => Activator.CreateInstance(x);
-        
+
         public RunStreamPersistentSubscribers CreateHandlerInstanceWith(
             Func<Type, IDictionary<string, object>, object> createInstance)
         {
@@ -39,7 +40,7 @@ namespace Athena.EventStore.StreamSubscriptions
 
             return this;
         }
-        
+
         public RunStreamPersistentSubscribers HandleTransactionsWith(Transaction transaction)
         {
             _transactions.Add(transaction);
@@ -91,14 +92,14 @@ namespace Athena.EventStore.StreamSubscriptions
         }
 
         public string Name { get; } = "persistentsubscription";
-        
+
         protected override AppFunctionBuilder DefineDefaultApplication(AppFunctionBuilder builder)
         {
             var routers = new List<EnvironmentRouter>
             {
                 RouteEventToMethods.New(x => x.Name == "Subscribe"
-                                            && (x.ReturnType == typeof(void) || x.ReturnType == typeof(Task))
-                                             && x.GetParameters().Any() && !x.IsGenericMethod, 
+                                             && (x.ReturnType == typeof(void) || x.ReturnType == typeof(Task))
+                                             && x.GetParameters().Any() && !x.IsGenericMethod,
                     builder.Bootstrapper.ApplicationAssemblies,
                     _createInstance)
             };
@@ -131,7 +132,7 @@ namespace Athena.EventStore.StreamSubscriptions
         {
             if (_running)
                 return;
-            
+
             Logger.Write(LogLevel.Debug, "Starting EventStore persistent subscriptions");
 
             _running = true;
@@ -145,14 +146,15 @@ namespace Athena.EventStore.StreamSubscriptions
 
             foreach (var stream in streams)
             {
-                await SetupSubscription(stream.Item1, stream.Item2, context).ConfigureAwait(false);
+                foreach (var worker in Enumerable.Range(1, stream.Item2))
+                    await SetupSubscription(stream.Item1, context, $"worker-{worker}").ConfigureAwait(false);
             }
         }
 
         public Task Stop()
         {
             Logger.Write(LogLevel.Debug, "Stopping EventStore persistent subscriptions");
-            
+
             _running = false;
 
             foreach (var subscription in _serviceSubscriptions)
@@ -167,25 +169,25 @@ namespace Athena.EventStore.StreamSubscriptions
             return Task.CompletedTask;
         }
 
-        private async Task SetupSubscription(string stream, int workers, AthenaContext context)
+        private async Task SetupSubscription(string stream, AthenaContext context, string worker)
         {
-            //TODO:Handle multiple workers
             var groupName = $"{Name}-{stream}";
+            var subscriptionKey = $"{groupName}-{worker}";
 
             while (true)
             {
-                Logger.Write(LogLevel.Debug, $"Subscribing to group {groupName}");
-                
-                if (_serviceSubscriptions.ContainsKey(groupName))
+                Logger.Write(LogLevel.Debug, $"Subscribing to group {groupName}, worker {worker}");
+
+                if (_serviceSubscriptions.ContainsKey(subscriptionKey))
                 {
-                    _serviceSubscriptions[groupName].Close();
-                    _serviceSubscriptions.Remove(groupName);
+                    _serviceSubscriptions[subscriptionKey].Close();
+                    _serviceSubscriptions.Remove(subscriptionKey);
                 }
 
                 try
                 {
                     var eventstoreSubscription = _connection.ConnectToPersistentSubscription(stream, groupName,
-                        async (subscription, evnt) => await HandleEvent(GetSerializer().DeSerialize(evnt),
+                        (subscription, evnt) => HandleEvent(GetSerializer().DeSerialize(evnt),
                             x =>
                             {
                                 Logger.Write(LogLevel.Debug,
@@ -200,11 +202,11 @@ namespace Athena.EventStore.StreamSubscriptions
 
                                 subscription.Fail(x.OriginalEvent, PersistentSubscriptionNakEventAction.Unknown,
                                     exception.Message);
-                            }, context).ConfigureAwait(false), async (subscription, reason, exception)
-                            => await SubscriptionDropped(stream, workers, reason, exception, context)
-                                .ConfigureAwait(false), autoAck: false);
+                            }, context).GetAwaiter().GetResult(), (subscription, reason, exception)
+                            => SubscriptionDropped(stream, worker, reason, exception, context)
+                                .GetAwaiter().GetResult(), autoAck: false);
 
-                    _serviceSubscriptions[groupName] = new PersistentServiceSubscription(eventstoreSubscription);
+                    _serviceSubscriptions[subscriptionKey] = new PersistentServiceSubscription(eventstoreSubscription);
                 }
                 catch (Exception ex)
                 {
@@ -218,7 +220,7 @@ namespace Athena.EventStore.StreamSubscriptions
             }
         }
 
-        private async Task SubscriptionDropped(string stream, int workers, SubscriptionDropReason reason,
+        private async Task SubscriptionDropped(string stream, string worker, SubscriptionDropReason reason,
             Exception exception, AthenaContext context)
         {
             if (!_running)
@@ -228,10 +230,10 @@ namespace Athena.EventStore.StreamSubscriptions
                 exception);
 
             if (reason != SubscriptionDropReason.UserInitiated)
-                await SetupSubscription(stream, workers, context).ConfigureAwait(false);
+                await SetupSubscription(stream, context, worker).ConfigureAwait(false);
         }
 
-        private async Task HandleEvent(DeSerializationResult evnt, Action<DeSerializationResult> done, 
+        private async Task HandleEvent(DeSerializationResult evnt, Action<DeSerializationResult> done,
             Action<DeSerializationResult, Exception> error, AthenaContext context)
         {
             if (!_running)
@@ -252,11 +254,11 @@ namespace Athena.EventStore.StreamSubscriptions
 
                 Logger.Write(LogLevel.Debug,
                     $"Executing persistent subscription application {Name} for event {evnt.Data}");
-                
+
                 await context.Execute(Name, requestEnvironment).ConfigureAwait(false);
 
                 done(evnt);
-                
+
                 Logger.Write(LogLevel.Debug, $"Persistent subscription application executed for event {evnt.Data}");
             }
             catch (Exception ex)

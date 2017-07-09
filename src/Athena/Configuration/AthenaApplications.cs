@@ -153,7 +153,7 @@ namespace Athena.Configuration
 
             var componentType = typeof(AthenaComponent);
 
-            var components = applicationAssemblies.SelectMany(GetAllAssemblies)
+            var components = GetAllAssemblies(Assembly.GetEntryAssembly())
                 .SelectMany(x => x.GetTypes())
                 .Where(x =>
                 {
@@ -173,10 +173,20 @@ namespace Athena.Configuration
         
         private static IEnumerable<Assembly> GetAllAssemblies(Assembly from)
         {
-            yield return from;
+            var assemblies = new List<Assembly>
+            {
+                from
+            };
 
             foreach (var referencedAssembly in from.GetReferencedAssemblies())
-                yield return Assembly.Load(referencedAssembly);
+            {
+                var assembly = Assembly.Load(referencedAssembly);
+
+                if (!assemblies.Contains(assembly))
+                    assemblies.Add(assembly);
+            }
+
+            return assemblies;
         }
     }
 }

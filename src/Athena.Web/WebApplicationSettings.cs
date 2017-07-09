@@ -172,6 +172,12 @@ namespace Athena.Web
             
             authorizers.Add(new MethodRouteConventionalAuthorizer(binders));
 
+            var cacheDataFinders = _cacheDataFinders.ToList();
+            cacheDataFinders.Add(new FindCacheDataForMethodEndpoint(binders));
+
+            var validators = _validators.ToList();
+            validators.Add(new ConventionalMethodRouteValidator(binders));
+
             return builder.First("HandleExceptions", next => new HandleExceptions(next,
                     async (exception, environment) =>
                     {
@@ -205,14 +211,14 @@ namespace Athena.Web
                         await context.Execute($"{Name}_unauthorized", environment).ConfigureAwait(false);
                     }).Invoke, () => authorizers.GetDiagnosticsData())
                 .ContinueWith("ValidateParameters",
-                    next => new ValidateParameters(next, _validators.ToList(), async environment =>
+                    next => new ValidateParameters(next, validators, async environment =>
                     {
                         var context = environment.GetAthenaContext();
 
                         await context.Execute($"{Name}_invalid", environment).ConfigureAwait(false);
-                    }).Invoke, () => _validators.GetDiagnosticsData())
-                .ContinueWith("ValidateCache", next => new ValidateCache(next, _cacheDataFinders.ToList()).Invoke,
-                    () => _cacheDataFinders.GetDiagnosticsData())
+                    }).Invoke, () => validators.GetDiagnosticsData())
+                .ContinueWith("ValidateCache", next => new ValidateCache(next, cacheDataFinders).Invoke,
+                    () => cacheDataFinders.GetDiagnosticsData())
                 .ContinueWith("ExecuteResource", next => new ExecuteResource(next, resourceExecutors).Invoke,
                     () => resourceExecutors.GetDiagnosticsData())
                 .Last("WriteOutput",

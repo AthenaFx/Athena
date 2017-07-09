@@ -17,14 +17,14 @@ namespace Athena.Diagnostics
         private readonly IDictionary<string, object> _environment;
         
         public TimerDiagnosticsContext(DiagnosticsDataManager dataManager, MetricsDataManager metricsDataManager, 
-            IDictionary<string, object> environment, string step, string name, IDictionary<string, object> environment1)
+            IDictionary<string, object> environment, string step, string name)
         {
             _dataManager = dataManager;
             _step = step;
             _name = name;
-            _environment = environment1;
             _metricsDataManager = metricsDataManager;
             _timer = Stopwatch.StartNew();
+            _environment = environment;
             _application = environment.GetCurrentApplication();
             _requestId = environment.GetRequestId();
         }

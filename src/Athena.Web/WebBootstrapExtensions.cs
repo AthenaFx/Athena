@@ -35,6 +35,9 @@ namespace Athena.Web
             appConfiguration.Child<WebApplicationRequestErrorSettings>($"{key}_error")
                 .ConfigureParentWith(async (webAppSettings, errorSettings, context) =>
                 {
+                    if (webAppSettings.Disabled)
+                        return webAppSettings;
+                    
                     await context.DefineApplication($"{webAppSettings.Name}_error", errorSettings.GetApplicationBuilder())
                         .ConfigureAwait(false);
 
@@ -44,6 +47,9 @@ namespace Athena.Web
             appConfiguration.Child<WebApplicationRequestNotFoundSettings>($"{key}_missing")
                 .ConfigureParentWith(async (webAppSettings, notFoundSettings, context) =>
                 {
+                    if (webAppSettings.Disabled)
+                        return webAppSettings;
+                    
                     await context
                         .DefineApplication($"{webAppSettings.Name}_missing", notFoundSettings.GetApplicationBuilder())
                         .ConfigureAwait(false);
@@ -54,6 +60,9 @@ namespace Athena.Web
             appConfiguration.Child<WebApplicationRequestUnAuthorizedSettings>($"{key}_unauthorized")
                 .ConfigureParentWith(async (webAppSettings, notFoundSettings, context) =>
                 {
+                    if (webAppSettings.Disabled)
+                        return webAppSettings;
+                    
                     await context
                         .DefineApplication($"{webAppSettings.Name}_unauthorized", notFoundSettings.GetApplicationBuilder())
                         .ConfigureAwait(false);
@@ -64,6 +73,9 @@ namespace Athena.Web
             appConfiguration.Child<WebApplicationRequestValidationErrorSettings>($"{key}_invalid")
                 .ConfigureParentWith(async (webAppSettings, notFoundSettings, context) =>
                 {
+                    if (webAppSettings.Disabled)
+                        return webAppSettings;
+                    
                     await context
                         .DefineApplication($"{webAppSettings.Name}_invalid", notFoundSettings.GetApplicationBuilder())
                         .ConfigureAwait(false);

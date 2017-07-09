@@ -78,7 +78,7 @@ namespace Athena.PubSub
 
             public void OnNext(object value, IDictionary<string, object> environment)
             {
-                Parallel.ForEach(_observers, observer =>
+                foreach (var observer in _observers)
                 {
                     try
                     {
@@ -86,10 +86,11 @@ namespace Athena.PubSub
                     }
                     catch (Exception e)
                     {
+                        Logger.Write(LogLevel.Warn, $"Failed to handle event of type {value.GetType()}", e);
+                        
                         observer.Value.OnError(e);
-                        throw;
-                    }
-                });
+                    }   
+                }
             }
 
             private class IntermidiatObserver<TEvent> : IObserver<EventData<object>>

@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using Athena.CommandHandling;
 using Athena.Configuration;
 using Athena.Diagnostics;
-using Athena.Diagnostics.Web;
 using Athena.Logging;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -23,6 +22,7 @@ namespace Athena.Web.Sample
             var athenaContext = await AthenaApplications
                 .From("dev", typeof(Program).GetTypeInfo().Assembly)
                 .LogToConsole(LogLevel.Debug)
+                .EnabledDiagnostics()
                 .UsingWebApplication()
                 .EnableCommandSender()
                 .Build();
