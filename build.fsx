@@ -13,8 +13,8 @@ let authors = ["Mattias Jakobsson"]
 let buildNumber = getBuildParamOrDefault "buildNumber" "0"
 let nugetApiKey = getBuildParamOrDefault "nugetKey" ""
 let nugetFeedUrl = getBuildParamOrDefault "nugetFeed" ""
-let version = (ReadFileAsString "version.txt") + "." + buildNumber
-let buildDir = "./build"
+let version = ((ReadFileAsString "version.txt") + "." + buildNumber)
+let buildDir = "./NuGet"
 
 Target "Clean" (fun _ ->
     !! "src/**/bin"
@@ -53,7 +53,7 @@ Target "CreatePackages" (fun _ ->
     DotNetCli.Pack
         (fun p -> 
            { p with 
-                OutputPath = "../../build";
+                OutputPath = "../../NuGet";
                 Configuration = "Release";
                 WorkingDir = ".\src"})
 )
@@ -65,7 +65,6 @@ Target "PushPackages" (fun _ ->
             PublishUrl = nugetFeedUrl
             Project = "Athena"
             Version = version
-            WorkingDir = "./build"
         }
     )
 )
