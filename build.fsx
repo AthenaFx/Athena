@@ -10,7 +10,26 @@ let projectDescription = "Athena framework for building modern services"
 let authors = ["Mattias Jakobsson"]
 
 // version info
-let version = ReadFileAsString "version.txt" // or retrieve from CI server
+let buildNumber = getBuildParamOrDefault "buildNumber" "0"
+let nugetApiKey = getBuildParamOrDefault "nugetKey" ""
+let nugetFeedUrl = getBuildParamOrDefault "nugetFeed" ""
+let version = (ReadFileAsString "version.txt") + "." + buildNumber
+let buildDir = "./build"
+
+Target "Clean" (fun _ ->
+    !! "src/**/bin"
+    ++ "src/**/obj"
+    |> CleanDirs
+
+    CleanDirs [buildDir]
+)
+
+Target "Restore" (fun _ ->
+    DotNetCli.Restore
+        (fun p -> 
+           { p with 
+                WorkingDir = ".\src"})
+)
 
 Target "AssemblyInfo" (fun _ ->
     AssemblyInfo 
@@ -22,13 +41,45 @@ Target "AssemblyInfo" (fun _ ->
 )
 
 Target "Build" (fun _ ->
-    !! @"src\*.sln" 
-    |> MSBuildWithDefaults "Build"
-    |> Log "Build-Output: "
+    DotNetCli.Build
+        (fun p -> 
+           { p with 
+                Configuration = "Release";
+                WorkingDir = ".\src"})
+
 )
 
-"AssemblyInfo"
+Target "CreatePackages" (fun _ -> 
+    DotNetCli.Pack
+        (fun p -> 
+           { p with 
+                OutputPath = "../../build";
+                Configuration = "Release";
+                WorkingDir = ".\src"})
+)
+
+Target "PushPackages" (fun _ -> 
+    NuGetPublish (fun nugetParams -> 
+        { nugetParams with
+            AccessKey = nugetApiKey
+            PublishUrl = nugetFeedUrl
+            Project = "Athena"
+            Version = version
+            WorkingDir = ".\build"
+        }
+    )
+)
+
+"Clean"
+  ==> "AssemblyInfo"
+  ==> "Restore"
   ==> "Build"
+
+"Clean"
+  ==> "AssemblyInfo"
+  ==> "Restore"
+  ==> "CreatePackages"
+  ==> "PushPackages"
 
 // start build
 RunTargetOrDefault "Build"

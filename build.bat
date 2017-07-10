@@ -1,3 +1,11 @@
 @echo off
 "tools\nuget\nuget.exe" "install" "FAKE" "-OutputDirectory" "tools" "-ExcludeVersion" "-PreRelease"
-"tools\FAKE\tools\Fake.exe" build.fsx
+
+SET FAKE_PATH=tools\FAKE\tools\Fake.exe
+
+
+IF [%1]==[] (
+    "%FAKE_PATH%" "build.fsx" 
+) ELSE (
+    "%FAKE_PATH%" "build.fsx" %* 
+)

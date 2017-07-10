@@ -182,7 +182,7 @@ namespace Athena.Configuration
             {
                 var assembly = Assembly.Load(referencedAssembly);
 
-                if (!assemblies.Contains(assembly))
+                if (assemblies.All(x => x.FullName != assembly.FullName))
                     assemblies.Add(assembly);
             }
 
