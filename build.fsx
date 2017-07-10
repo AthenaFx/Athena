@@ -65,7 +65,7 @@ Target "PushPackages" (fun _ ->
             PublishUrl = nugetFeedUrl
             Project = "Athena"
             Version = version
-            WorkingDir = ".\build"
+            WorkingDir = "./build"
         }
     )
 )
@@ -81,5 +81,4 @@ Target "PushPackages" (fun _ ->
   ==> "CreatePackages"
   ==> "PushPackages"
 
-// start build
 RunTargetOrDefault "Build"
