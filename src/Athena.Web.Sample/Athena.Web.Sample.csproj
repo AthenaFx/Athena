@@ -32,7 +32,4 @@
   <ItemGroup>
     <ProjectReference Include="..\Athena.Diagnostics\Athena.Diagnostics.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="build" />
-  </ItemGroup>
 </Project>

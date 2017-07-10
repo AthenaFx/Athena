@@ -27,8 +27,4 @@
       <Name>Athena</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="build" />
-    <Folder Include="build" />
-  </ItemGroup>
 </Project>

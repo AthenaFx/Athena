@@ -17,8 +17,4 @@
     <ProjectReference Include="..\Athena.Web\Athena.Web.csproj" />
     <ProjectReference Include="..\Athena\Athena.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="build" />
-    <Folder Include="build" />
-  </ItemGroup>
 </Project>

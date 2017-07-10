@@ -5,5 +5,6 @@ obj
 bin
 tools/FAKE
 build
+NuGet
 .fake
 src/CommonAssemblyInfo.cs
