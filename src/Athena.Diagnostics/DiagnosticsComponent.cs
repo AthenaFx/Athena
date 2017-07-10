@@ -70,7 +70,7 @@ namespace Athena.Diagnostics
                             await conf
                                 .DataManager
                                 .AddDiagnostics(context.ApplicationName, "Lifecycle", "Runtime",
-                                    new DiagnosticsData($"{evnt.GetType().Name}-{Guid.NewGuid():N}", data),
+                                    new DiagnosticsData($"{evnt.Event.GetType().Name}-{Guid.NewGuid():N}", data),
                                     evnt.Environment)
                                 .ConfigureAwait(false);
                         }).Subscribe();

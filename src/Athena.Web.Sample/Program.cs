@@ -22,7 +22,7 @@ namespace Athena.Web.Sample
             var athenaContext = await AthenaApplications
                 .From("dev", typeof(Program).GetTypeInfo().Assembly)
                 .LogToConsole(LogLevel.Debug)
-                .EnabledDiagnostics()
+                .EnableDiagnostics()
                 .UsingWebApplication()
                 .EnableCommandSender()
                 .Build();
