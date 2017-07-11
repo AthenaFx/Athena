@@ -15,13 +15,14 @@ namespace Athena.Configuration
     public sealed class AthenaApplications : AthenaSetupContext, AthenaBootstrapper
     {
         private readonly Stopwatch _timer;
-        private readonly TimeSpan _locatedComponentsIn;
         
         private readonly ConcurrentDictionary<string, PartConfiguration> _partConfigurations =
             new ConcurrentDictionary<string, PartConfiguration>();
         
         private readonly ConcurrentDictionary<string, AppFunctionBuilder> _applicationBuilders
             = new ConcurrentDictionary<string, AppFunctionBuilder>();
+        
+        private readonly ConcurrentDictionary<string, TimeSpan> _timings = new ConcurrentDictionary<string, TimeSpan>();
 
         private AthenaApplications(string applicationName, string environment,
             IReadOnlyCollection<Assembly> applicationAssemblies, Stopwatch timer)
@@ -29,7 +30,6 @@ namespace Athena.Configuration
             Environment = environment;
             ApplicationAssemblies = applicationAssemblies;
             _timer = timer;
-            _locatedComponentsIn = timer.Elapsed;
             ApplicationName = applicationName;
             SetupEnvironment = new Dictionary<string, object>();
         }
@@ -38,6 +38,11 @@ namespace Athena.Configuration
         public string Environment { get; }
         public IDictionary<string, object> SetupEnvironment { get; }
         public IReadOnlyCollection<Assembly> ApplicationAssemblies { get; }
+
+        public void AddTiming(string key, TimeSpan? elapsed = null)
+        {
+            _timings[key] = elapsed ?? _timer.Elapsed;
+        }
 
         public PartConfiguration<TPart> Part<TPart>(string key = null) where TPart : class, new()
         {
@@ -97,13 +102,17 @@ namespace Athena.Configuration
 
             await Done(new BeforeApplicationsCompilation()).ConfigureAwait(false);
             
-            bootstrapTimer.Stop();
+            AddTiming("Bootstrapped", bootstrapTimer.Elapsed);
+
+            var compilationTimer = Stopwatch.StartNew();
 
             var compilationResults = await Task.WhenAll(_applicationBuilders
                     .Select(x => CompileApplication(x.Key, x.Value)))
                 .ConfigureAwait(false);
 
             var applications = compilationResults.ToDictionary(x => x.Item1, x => x.Item2);
+            
+            AddTiming("ApplicationsCompiled", compilationTimer.Elapsed);
 
             await Done(new ApplicationsCompiled()).ConfigureAwait(false);
             
@@ -113,12 +122,15 @@ namespace Athena.Configuration
                     applications,
                     _partConfigurations)
                 .ConfigureAwait(false);
+            
+            AddTiming("StartupsRan", startupTimer.Elapsed);
+            
+            AddTiming("TotalBootstrapTime");
 
-            await Done(new BootstrapCompleted(ApplicationName, Environment, _timer.Elapsed, _locatedComponentsIn,
-                    startupTimer.Elapsed, bootstrapTimer.Elapsed))
+            await Done(new BootstrapCompleted(ApplicationName, Environment, _timings))
                 .ConfigureAwait(false);
             
-            Logger.Write(LogLevel.Debug, "Context build finished");
+            Logger.Write(LogLevel.Debug, $"Context build finished in {_timer.Elapsed}");
 
             return context;
         }
@@ -177,8 +189,14 @@ namespace Athena.Configuration
             
             AthenaBootstrapper bootstrapper = new AthenaApplications(applicationName, environment, 
                 applicationAssemblies, timer);
+            
+            ((AthenaApplications)bootstrapper).AddTiming("ComponentsFound", timer.Elapsed);
 
+            var configureComponentsTimer = Stopwatch.StartNew();
+            
             bootstrapper = components.Aggregate(bootstrapper, (current, component) => component.Configure(current));
+            
+            ((AthenaApplications)bootstrapper).AddTiming("ComponentsConfigured", configureComponentsTimer.Elapsed);
 
             return bootstrapper;
         }

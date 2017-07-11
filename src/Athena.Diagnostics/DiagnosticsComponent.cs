@@ -56,6 +56,19 @@ namespace Athena.Diagnostics
                             new DiagnosticsData($"{evnt.GetType().Name}-{Guid.NewGuid():N}", data), 
                             context.SetupEnvironment)
                         .ConfigureAwait(false);
+                })
+                .On<BootstrapCompleted>(async (conf, evnt, context) =>
+                {
+                    var data = evnt
+                        .Timings
+                        .ToDictionary(x => x.Key, x => x.Value.ToString());
+                
+                    await conf
+                        .DataManager
+                        .AddDiagnostics(context.ApplicationName, "Lifecycle", "Bootstrap",
+                            new DiagnosticsData("BootstrapCompleted", data), 
+                            context.SetupEnvironment)
+                        .ConfigureAwait(false);
                 }).OnStartup((conf, context) =>
                 {
                     EventPublishing.OpenChannel<object>()

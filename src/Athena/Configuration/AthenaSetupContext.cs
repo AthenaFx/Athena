@@ -11,6 +11,7 @@ namespace Athena.Configuration
         string Environment { get; }
         IDictionary<string, object> SetupEnvironment { get; }
         IReadOnlyCollection<Assembly> ApplicationAssemblies { get; }
+        void AddTiming(string key, TimeSpan? elapsed = null);
         Task DefineApplication(string name, Func<AppFunctionBuilder, AppFunctionBuilder> builder);
         Task UpdateApplication(string name, Func<AppFunctionBuilder, AppFunctionBuilder> builder);
     }
