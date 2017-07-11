@@ -45,18 +45,13 @@ namespace Athena.Configuration
 
         public TSetting GetSetting<TSetting>(string key = null) where TSetting : class
         {
-            if (string.IsNullOrEmpty(key))
-                key = typeof(TSetting).AssemblyQualifiedName;
-            
-            Logger.Write(LogLevel.Debug, $"Getting settings {typeof(TSetting)} with key {key}");
-
-            return _configurations.ContainsKey(key) ? _configurations[key].GetPart() as TSetting : null;
+            return GetSetting(typeof(TSetting), key) as TSetting;
         }
 
         public object GetSetting(Type type, string key = null)
         {
             if (string.IsNullOrEmpty(key))
-                key = type.AssemblyQualifiedName;
+                key = type.FullName;
             
             Logger.Write(LogLevel.Debug, $"Getting settings {type} with key {key}");
 
