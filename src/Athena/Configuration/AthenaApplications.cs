@@ -15,6 +15,7 @@ namespace Athena.Configuration
     public sealed class AthenaApplications : AthenaSetupContext, AthenaBootstrapper
     {
         private readonly Stopwatch _timer;
+        private readonly TimeSpan _locatedComponentsIn;
         
         private readonly ConcurrentDictionary<string, PartConfiguration> _partConfigurations =
             new ConcurrentDictionary<string, PartConfiguration>();
@@ -28,6 +29,7 @@ namespace Athena.Configuration
             Environment = environment;
             ApplicationAssemblies = applicationAssemblies;
             _timer = timer;
+            _locatedComponentsIn = timer.Elapsed;
             ApplicationName = applicationName;
             SetupEnvironment = new Dictionary<string, object>();
         }
@@ -106,7 +108,8 @@ namespace Athena.Configuration
                     _partConfigurations)
                 .ConfigureAwait(false);
 
-            await Done(new BootstrapCompleted(ApplicationName, Environment, _timer.Elapsed)).ConfigureAwait(false);
+            await Done(new BootstrapCompleted(ApplicationName, Environment, _timer.Elapsed, _locatedComponentsIn))
+                .ConfigureAwait(false);
             
             Logger.Write(LogLevel.Debug, "Context build finished");
 
@@ -148,9 +151,6 @@ namespace Athena.Configuration
         {
             var timer = Stopwatch.StartNew();
             
-            AthenaBootstrapper bootstrapper = new AthenaApplications(applicationName, environment, 
-                applicationAssemblies, timer);
-
             var componentType = typeof(AthenaComponent);
 
             var components = GetAllAssemblies(Assembly.GetEntryAssembly())
@@ -167,8 +167,13 @@ namespace Athena.Configuration
                 .Select(Activator.CreateInstance)
                 .OfType<AthenaComponent>()
                 .ToList();
+            
+            AthenaBootstrapper bootstrapper = new AthenaApplications(applicationName, environment, 
+                applicationAssemblies, timer);
 
-            return components.Aggregate(bootstrapper, (current, component) => component.Configure(current));
+            bootstrapper = components.Aggregate(bootstrapper, (current, component) => component.Configure(current));
+
+            return bootstrapper;
         }
         
         private static IEnumerable<Assembly> GetAllAssemblies(Assembly from)
