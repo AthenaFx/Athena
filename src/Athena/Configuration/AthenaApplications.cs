@@ -90,10 +90,14 @@ namespace Athena.Configuration
         public async Task<AthenaContext> Build()
         {
             Logger.Write(LogLevel.Debug, "Starting context build");
+
+            var bootstrapTimer = Stopwatch.StartNew();
             
             await Done(new BootstrapStarted(ApplicationName, Environment)).ConfigureAwait(false);
 
             await Done(new BeforeApplicationsCompilation()).ConfigureAwait(false);
+            
+            bootstrapTimer.Stop();
 
             var compilationResults = await Task.WhenAll(_applicationBuilders
                     .Select(x => CompileApplication(x.Key, x.Value)))
@@ -102,13 +106,16 @@ namespace Athena.Configuration
             var applications = compilationResults.ToDictionary(x => x.Item1, x => x.Item2);
 
             await Done(new ApplicationsCompiled()).ConfigureAwait(false);
+            
+            var startupTimer = Stopwatch.StartNew();
 
             var context = await ApplicationsContext.From(ApplicationAssemblies, ApplicationName, Environment,
                     applications,
                     _partConfigurations)
                 .ConfigureAwait(false);
 
-            await Done(new BootstrapCompleted(ApplicationName, Environment, _timer.Elapsed, _locatedComponentsIn))
+            await Done(new BootstrapCompleted(ApplicationName, Environment, _timer.Elapsed, _locatedComponentsIn,
+                    startupTimer.Elapsed, bootstrapTimer.Elapsed))
                 .ConfigureAwait(false);
             
             Logger.Write(LogLevel.Debug, "Context build finished");
