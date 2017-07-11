@@ -141,12 +141,25 @@ namespace Athena.Configuration
         private async Task Done(SetupEvent evnt)
         {
             Logger.Write(LogLevel.Debug, $"{evnt} done");
+            var timer = Stopwatch.StartNew();
             
-            await Task.WhenAll(_partConfigurations
-                    .Select(x => x.Value.RunSetupsFor(evnt, this)))
+            var results = await Task.WhenAll(_partConfigurations
+                    .Select(async x => new
+                    {
+                        Name = x.Key,
+                        WasRun = await x.Value.RunSetupsFor(evnt, this).ConfigureAwait(false)
+                    }))
                 .ConfigureAwait(false);
 
             EventPublishing.Publish(evnt, SetupEnvironment);
+            
+            timer.Stop();
+
+            foreach (var result in results)
+            {
+                if (result.WasRun)
+                    AddTiming($"Setup{result.Name}Ran", timer.Elapsed);
+            }
         }
 
         private async Task<Tuple<string, AppFunc>> CompileApplication(string name, AppFunctionBuilder builder)

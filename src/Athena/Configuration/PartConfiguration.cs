@@ -40,7 +40,7 @@ namespace Athena.Configuration
             return _bootstrapper.Build();
         }
 
-        internal abstract Task RunSetupsFor(SetupEvent evnt, AthenaSetupContext context);
+        internal abstract Task<bool> RunSetupsFor(SetupEvent evnt, AthenaSetupContext context);
         
         internal abstract Task Startup(AthenaContext context);
         internal abstract Task Shutdown(AthenaContext context);
@@ -95,7 +95,7 @@ namespace Athena.Configuration
     
     public class PartConfiguration<TPart> : PartConfiguration where TPart : class, new()
     {
-        private object _syncRoot = new object();
+        private readonly object _syncRoot = new object();
         
         private bool _hasSetup;
         private bool _running;
@@ -224,14 +224,14 @@ namespace Athena.Configuration
             }) as ChildPartConfiguration<TPart, TChild>;
         }
         
-        internal override async Task RunSetupsFor(SetupEvent evnt, AthenaSetupContext context)
+        internal override async Task<bool> RunSetupsFor(SetupEvent evnt, AthenaSetupContext context)
         {
             var availableSetups = _setups
                 .Where(x => x.Item1(evnt))
                 .ToList();
             
             if(!availableSetups.Any())
-                return;
+                return false;
 
             Logger.Write(LogLevel.Debug, $"Setting up {typeof(TPart)} for {evnt} ({availableSetups.Count} setups)");
             
@@ -248,6 +248,8 @@ namespace Athena.Configuration
             await Task.WhenAll(availableSetups
                 .Select(x => x.Item2(part, evnt, context)))
                 .ConfigureAwait(false);
+
+            return true;
         }
 
         internal override async Task Startup(AthenaContext context)
