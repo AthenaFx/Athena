@@ -212,7 +212,7 @@ namespace Athena.Configuration
             Logger.Write(LogLevel.Debug, $"Configuring child ({typeof(TChild)}) for {typeof(TPart)}");
             
             if (string.IsNullOrEmpty(key))
-                key = typeof(TPart).AssemblyQualifiedName;
+                key = typeof(TPart).FullName;
 
             return Children.GetOrAdd(key, x =>
             {

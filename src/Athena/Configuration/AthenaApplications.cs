@@ -47,7 +47,7 @@ namespace Athena.Configuration
         public PartConfiguration<TPart> Part<TPart>(string key = null) where TPart : class, new()
         {
             if (string.IsNullOrEmpty(key))
-                key = typeof(TPart).AssemblyQualifiedName;
+                key = typeof(TPart).FullName;
 
             return _partConfigurations.GetOrAdd(key, x =>
             {
