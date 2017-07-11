@@ -187,16 +187,18 @@ namespace Athena.Configuration
                 .OfType<AthenaComponent>()
                 .ToList();
             
-            AthenaBootstrapper bootstrapper = new AthenaApplications(applicationName, environment, 
+            var athenaApplications = new AthenaApplications(applicationName, environment, 
                 applicationAssemblies, timer);
             
-            ((AthenaApplications)bootstrapper).AddTiming("ComponentsFound", timer.Elapsed);
+            athenaApplications.AddTiming("ComponentsFound", timer.Elapsed);
 
             var configureComponentsTimer = Stopwatch.StartNew();
+
+            AthenaBootstrapper bootstrapper = athenaApplications;
             
             bootstrapper = components.Aggregate(bootstrapper, (current, component) => component.Configure(current));
             
-            ((AthenaApplications)bootstrapper).AddTiming("ComponentsConfigured", configureComponentsTimer.Elapsed);
+            athenaApplications.AddTiming("ComponentsConfigured", configureComponentsTimer.Elapsed);
 
             return bootstrapper;
         }
