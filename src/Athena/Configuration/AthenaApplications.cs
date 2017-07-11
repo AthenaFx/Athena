@@ -158,7 +158,7 @@ namespace Athena.Configuration
             foreach (var result in results)
             {
                 if (result.WasRun)
-                    AddTiming($"Setup{result.Name}Ran", timer.Elapsed);
+                    AddTiming($"Setup{result.Name}RanOn{evnt}", timer.Elapsed);
             }
         }
 
