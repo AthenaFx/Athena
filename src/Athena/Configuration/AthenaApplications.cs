@@ -127,10 +127,13 @@ namespace Athena.Configuration
             
             AddTiming("TotalBootstrapTime");
 
+            var doneTimer = Stopwatch.StartNew();
+
             await Done(new BootstrapCompleted(ApplicationName, Environment, _timings))
                 .ConfigureAwait(false);
-            
-            Logger.Write(LogLevel.Debug, $"Context build finished in {_timer.Elapsed}");
+
+            Logger.Write(LogLevel.Debug,
+                $"Context build finished in {_timer.Elapsed} (Last step: {doneTimer.Elapsed})");
 
             return context;
         }

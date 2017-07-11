@@ -126,7 +126,7 @@ namespace Athena.Configuration
 
         public PartConfiguration<TPart> Configure(Func<TPart, TPart> configure)
         {
-            Logger.Write(LogLevel.Debug, "Configuration started");
+            Logger.Write(LogLevel.Debug, $"Configuration started for {typeof(TPart)}");
             
             Settings = configure(Settings);
 
