@@ -1,10 +1,8 @@
 .idea
-project.lock.json
+.vs
 packages
 obj
 bin
 tools/FAKE
-build
 NuGet
 .fake
-src/CommonAssemblyInfo.cs
