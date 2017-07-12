@@ -16,7 +16,7 @@ namespace Athena.Web
         public WebApplicationsRouterSettings AddApplication(WebApplicationSettings settings, 
             Func<IDictionary<string, object>, WebApplicationSettings, bool> filter = null)
         {
-            var order = 1;
+            var order = 1000 - (settings.BaseUrl ?? "").Length;
 
             if (filter == null)
                 order = int.MaxValue;
