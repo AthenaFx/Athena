@@ -1,18 +1,11 @@
-// include Fake lib
 #r @"tools\FAKE\tools\FakeLib.dll"
 
 open Fake
-open Fake.DotNet.MsBuild
 
-let projectName = "Athena"
-let projectSummary = "Athena framework"
-let projectDescription = "Athena framework for building modern services"
-let authors = ["Mattias Jakobsson"]
-
-// version info
 let buildNumber = getBuildParamOrDefault "buildNumber" "1"
 let nugetApiKey = getBuildParamOrDefault "nugetKey" ""
 let nugetFeedUrl = getBuildParamOrDefault "nugetFeed" ""
+let configuration = getBuildParamOrDefault "configuration" "Debug"
 let version = ((ReadFileAsString "version.txt") + "." + buildNumber)
 let buildDir = "./NuGet"
 
@@ -32,7 +25,7 @@ Target "Restore" (fun _ ->
 )
 
 Target "AssemblyInfo" (fun _ ->
-    AssemblyInfo 
+    AssemblyInfo
         (fun p -> 
         {p with
             CodeLanguage = CSharp;
@@ -54,23 +47,23 @@ Target "CreatePackages" (fun _ ->
         (fun p -> 
            { p with 
                 OutputPath = "../../NuGet";
-                Configuration = "Release";
+                Configuration = configuration;
                 WorkingDir = ".\src";
                 AdditionalArgs = ["/p:PackageVersion=" + version]})
 )
 
-let pushPackage = (fun name ->
-    NuGetPublish (fun nugetParams -> 
-        { nugetParams with
-            AccessKey = nugetApiKey
-            PublishUrl = nugetFeedUrl
-            Project = name
-            Version = version
-        }
-    )
-)
-
 Target "PushPackages" (fun _ -> 
+    let pushPackage = (fun name ->
+        NuGetPublish (fun nugetParams -> 
+            { nugetParams with
+                AccessKey = nugetApiKey
+                PublishUrl = nugetFeedUrl
+                Project = name
+                Version = version
+            }
+        )
+    )
+
     pushPackage("Athena")
     pushPackage("Athena.Web")
     pushPackage("Athena.EventStore")
