@@ -65,9 +65,6 @@ Target "PushPackages" (fun _ ->
 
 "Clean"
   ==> "Restore"
-
-"Clean"
-  ==> "Restore"
   ==> "CreatePackages"
   ==> "PushPackages"
 
