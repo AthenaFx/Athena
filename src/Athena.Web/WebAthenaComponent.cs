@@ -17,9 +17,14 @@ namespace Athena.Web
                     var applications = conf.GetApplications().OrderBy(x => x.Item1).ToList();
 
                     Logger.Write(LogLevel.Debug, $"Configuring {applications.Count} web applications");
-                    
+
                     foreach (var application in applications)
+                    {
+                        Logger.Write(LogLevel.Debug,
+                            $"Configuring web application {application.Item3.Name} (at: {application.Item3.BaseUrl}, order: {application.Item1})");
+                        
                         context.DefineApplication(application.Item3.Name, application.Item3.GetApplicationBuilder());
+                    }
 
                     var diagnosticsData = applications
                         .ToDictionary(x => x.Item3.Name, x => $"/{x.Item3.BaseUrl}");
