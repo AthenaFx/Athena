@@ -22,7 +22,9 @@ Target "Restore" (fun _ ->
         (fun p -> 
            { p with 
                 WorkingDir = ".\src";
-                AdditionalArgs = ["/p:PackageVersion=" + version]})
+                AdditionalArgs = ["/p:PackageVersion=" + version]
+           }
+        )
 )
 
 Target "Build" (fun _ ->
@@ -41,7 +43,9 @@ Target "CreatePackages" (fun _ ->
                 OutputPath = "../../NuGet";
                 Configuration = configuration;
                 WorkingDir = ".\src";
-                AdditionalArgs = ["/p:PackageVersion=" + version]})
+                AdditionalArgs = ["/p:PackageVersion=" + version]
+           }
+        )
 )
 
 Target "PushPackages" (fun _ -> 
