@@ -21,7 +21,8 @@ Target "Restore" (fun _ ->
     DotNetCli.Restore
         (fun p -> 
            { p with 
-                WorkingDir = ".\src"})
+                WorkingDir = ".\src";
+                AdditionalArgs = ["/p:PackageVersion=" + version]})
 )
 
 Target "Build" (fun _ ->
@@ -64,7 +65,6 @@ Target "PushPackages" (fun _ ->
 
 "Clean"
   ==> "Restore"
-  ==> "Build"
 
 "Clean"
   ==> "Restore"
