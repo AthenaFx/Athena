@@ -24,20 +24,11 @@ Target "Restore" (fun _ ->
                 WorkingDir = ".\src"})
 )
 
-Target "AssemblyInfo" (fun _ ->
-    AssemblyInfo
-        (fun p -> 
-        {p with
-            CodeLanguage = CSharp;
-            AssemblyVersion = version;
-            OutputFileName = @".\src\CommonAssemblyInfo.cs"})             
-)
-
 Target "Build" (fun _ ->
     DotNetCli.Build
         (fun p -> 
            { p with 
-                Configuration = "Release";
+                Configuration = configuration;
                 WorkingDir = ".\src"})
 
 )
@@ -72,12 +63,10 @@ Target "PushPackages" (fun _ ->
 )
 
 "Clean"
-  ==> "AssemblyInfo"
   ==> "Restore"
   ==> "Build"
 
 "Clean"
-  ==> "AssemblyInfo"
   ==> "Restore"
   ==> "CreatePackages"
   ==> "PushPackages"

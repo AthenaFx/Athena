@@ -1,6 +1,6 @@
 .idea
 project.lock.json
-src/packages
+packages
 obj
 bin
 tools/FAKE

@@ -1,0 +1,10 @@
+source https://www.nuget.org/api/v2
+nuget Consul
+nuget EventStore.ClientAPI.NetCore
+nuget Microsoft.AspNetCore.Diagnostics
+nuget Microsoft.AspNetCore.Owin
+nuget Microsoft.AspNetCore.Server.Kestrel
+nuget Microsoft.Extensions.Logging.Console
+nuget Newtonsoft.Json
+nuget System.Reactive
+nuget System.Threading.Tasks.Parallel

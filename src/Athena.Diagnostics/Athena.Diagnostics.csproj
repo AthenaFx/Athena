@@ -17,7 +17,5 @@
     <ProjectReference Include="..\Athena.Web\Athena.Web.csproj" />
     <ProjectReference Include="..\Athena\Athena.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="System.Reactive" Version="4.0.0-preview00001" />
-  </ItemGroup>
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

@@ -14,17 +14,10 @@
     <GenerateAssemblyCopyrightAttribute>false</GenerateAssemblyCopyrightAttribute>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="EventStore.ClientAPI.NetCore">
-      <Version>4.0.0-alpha-1</Version>
-    </PackageReference>
-    <PackageReference Include="System.Reactive">
-      <Version>4.0.0-preview00001</Version>
-    </PackageReference>
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\Athena\Athena.csproj">
       <Project>{2f488004-813a-4cbd-938a-4a7fc60bfe98}</Project>
       <Name>Athena</Name>
     </ProjectReference>
   </ItemGroup>
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

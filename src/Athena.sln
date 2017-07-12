@@ -22,6 +22,10 @@ ProjectSection(SolutionItems) = preProject
 	..\build.bat = ..\build.bat
 	..\build.fsx = ..\build.fsx
 	..\version.txt = ..\version.txt
+	..\paket.lock = ..\paket.lock
+	..\paket.dependencies = ..\paket.dependencies
+	..\paket.cmd = ..\paket.cmd
+	..\.gitignore = ..\.gitignore
 EndProjectSection
 EndProject
 Global
