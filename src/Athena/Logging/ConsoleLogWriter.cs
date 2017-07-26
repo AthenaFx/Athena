@@ -11,7 +11,7 @@ namespace Athena.Logging
             _level = level;
         }
 
-        public void Write(LogLevel level, string message, Exception exception = null)
+        public void Write(LogLevel level, string message, object data = null, Exception exception = null)
         {
             if(level.Level < _level.Level)
                 return;

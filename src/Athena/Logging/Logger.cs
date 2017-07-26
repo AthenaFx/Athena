@@ -23,7 +23,13 @@ namespace Athena.Logging
         public static void Write(LogLevel level, string message, Exception exception = null)
         {
             foreach (var writer in Writers)
-                writer.Write(level, message, exception);
+                writer.Write(level, message, exception: exception);
+        }
+        
+        public static void Write(LogLevel level, string message, object data, Exception exception = null)
+        {
+            foreach (var writer in Writers)
+                writer.Write(level, message, data, exception);
         }
     }
 }

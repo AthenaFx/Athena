@@ -71,5 +71,9 @@ Target "PushPackages" (fun _ ->
   ==> "Restore"
   ==> "CreatePackages"
   ==> "PushPackages"
+  
+"Clean"
+  ==> "Restore"
+  ==> "Build"
 
 RunTargetOrDefault "Build"

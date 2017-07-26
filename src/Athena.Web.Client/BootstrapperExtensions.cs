@@ -19,16 +19,4 @@ namespace Athena.Web.Client
                 .Child<ClientWebApplicationSettings>(key);
         }
     }
-
-    public class ClientWebApplicationSettings
-    {
-        public string RenderFile { get; private set; } = "~/Index.html";
-
-        public ClientWebApplicationSettings UsingFile(string file)
-        {
-            RenderFile = file;
-
-            return this;
-        }
-    }
 }
