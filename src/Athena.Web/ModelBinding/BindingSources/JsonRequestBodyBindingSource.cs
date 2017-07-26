@@ -11,39 +11,25 @@ namespace Athena.Web.ModelBinding.BindingSources
 {
     public class JsonRequestBodyBindingSource : BindingSource
     {
-        private IDictionary<string, object> _data;
-
         public async Task<IReadOnlyDictionary<string, object>> GetValues(IDictionary<string, object> envinronment)
         {
-            await SetValues(envinronment).ConfigureAwait(false);
-
-            return _data.ToDictionary(x => x.Key.ToLower(), x => x.Value);
-        }
-
-        private async Task SetValues(IDictionary<string, object> envinronment)
-        {
-            if (_data != null)
-                return;
-
-            var streamReader = new StreamReader(envinronment.GetRequest().Body, Encoding.UTF8, true, 4 * 1024, true);
-
-            var json = await streamReader.ReadToEndAsync().ConfigureAwait(false);
-
             try
             {
+                var json = await envinronment.GetRequest().ReadBodyAsString().ConfigureAwait(false);
+                
                 var outer = JObject.Parse(json);
 
                 var result = new Dictionary<string, object>();
 
                 SetEdgeValues(outer, "", result);
 
-                _data = result;
+                return result.ToDictionary(x => x.Key.ToLower(), x => x.Value);
             }
             catch (Exception ex)
             {
-                _data = new Dictionary<string, object>();
-
                 Logger.Write(LogLevel.Debug, "Unable to parse body as json.", ex);
+                
+                return new Dictionary<string, object>();
             }
         }
 

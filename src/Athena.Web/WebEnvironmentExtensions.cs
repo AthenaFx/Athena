@@ -122,10 +122,26 @@ namespace Athena.Web
             public RequestCookieCollection Cookies => new RequestCookieCollection(GetCookies());
             public Stream Body => _environment.Get<Stream>(OwinConstants.RequestBody);
 
+            public async Task<string> ReadBodyAsString()
+            {
+                var bodyString = _environment.Get<string>("Athena.Owin.Body#data");
+
+                if (bodyString != null)
+                    return bodyString;
+
+                var streamReader = new StreamReader(Body, Encoding.UTF8, true, 4 * 1024, true);
+
+                bodyString = await streamReader.ReadToEndAsync().ConfigureAwait(false);
+                
+                Set("Athena.Owin.Body#data", bodyString);
+
+                return bodyString;
+            }
+
             public CancellationToken CallCancelled
             {
-                get { return _environment.Get<CancellationToken>(OwinConstants.CallCancelled); }
-                set { Set(OwinConstants.CallCancelled, value); }
+                get => _environment.Get<CancellationToken>(OwinConstants.CallCancelled);
+                set => Set(OwinConstants.CallCancelled, value);
             }
             public string LocalIpAddress => _environment.Get<string>(OwinConstants.CommonKeys.LocalIpAddress);
 
@@ -244,7 +260,7 @@ namespace Athena.Web
 
             private async Task<FormData> GetForm()
             {
-                var formData = _environment.Get<FormData>("SuperGlue.Owin.Form#data");
+                var formData = _environment.Get<FormData>("Athena.Owin.Form#data");
 
                 if (formData != null)
                     return formData;
@@ -254,7 +270,7 @@ namespace Athena.Web
                 if (string.IsNullOrEmpty(Headers.ContentType))
                 {
                     formData = new FormData(new ReadableStringCollection(form.ToDictionary(x => x.Key, x => x.Value.ToArray())), new List<HttpFile>());
-                    Set("SuperGlue.Owin.Form#data", formData);
+                    Set("Athena.Owin.Form#data", formData);
                     return formData;
                 }
 
@@ -275,7 +291,7 @@ namespace Athena.Web
                 if (!mimeType.Equals("multipart/form-data", StringComparison.OrdinalIgnoreCase))
                 {
                     formData = new FormData(new ReadableStringCollection(form.ToDictionary(x => x.Key, x => x.Value.ToArray())), new List<HttpFile>());
-                    Set("SuperGlue.Owin.Form#data", formData);
+                    Set("Athena.Owin.Form#data", formData);
                     return formData;
                 }
 
@@ -306,7 +322,7 @@ namespace Athena.Web
                 }
 
                 formData = new FormData(new ReadableStringCollection(form.ToDictionary(x => x.Key, x => x.Value.ToArray())), files);
-                Set("SuperGlue.Owin.Form#data", formData);
+                Set("Athena.Owin.Form#data", formData);
                 return formData;
             }
 
@@ -314,15 +330,15 @@ namespace Athena.Web
 
             private IDictionary<string, string[]> GetQuery()
             {
-                var query = _environment.Get<IDictionary<string, string[]>>("SuperGlue.Owin.Query#dictionary");
+                var query = _environment.Get<IDictionary<string, string[]>>("Athena.Owin.Query#dictionary");
                 if (query == null)
                 {
                     query = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
-                    Set("SuperGlue.Owin.Query#dictionary", query);
+                    Set("Athena.Owin.Query#dictionary", query);
                 }
 
                 var text = QueryString;
-                if (_environment.Get<string>("SuperGlue.Owin.Query#text") == text)
+                if (_environment.Get<string>("Athena.Owin.Query#text") == text)
                     return query;
 
                 query.Clear();
@@ -331,7 +347,7 @@ namespace Athena.Web
                 foreach (var kv in accumulator)
                     query.Add(kv.Key, kv.Value.ToArray());
 
-                Set("SuperGlue.Owin.Query#text", text);
+                Set("Athena.Owin.Query#text", text);
 
                 return query;
             }
