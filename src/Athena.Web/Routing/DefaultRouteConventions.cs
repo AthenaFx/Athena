@@ -57,7 +57,7 @@ namespace Athena.Web.Routing
                     var namespacePart = availableMethod.DeclaringType.Namespace.Split('.').Last();
 
                     if(!namespacePart.Equals("Home", StringComparison.OrdinalIgnoreCase))
-                        routeParts.Add(namespacePart.ToLower().Pluralize());
+                        routeParts.Add(namespacePart.ToLower());
                 }
 
                 var hasSlug = availableMethod
