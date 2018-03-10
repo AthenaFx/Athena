@@ -17,9 +17,11 @@ build_script:
 - cmd: >-
     cd src
 
-    dotnet build
+    dotnet build -c Release
 
-    dotnet pack
+    dotnet pack -c Release
+artifacts:
+- path: .\**\*.nupkg
 deploy:
 - provider: NuGet
   server: https://www.myget.org/F/jajo/api/v2/package
