@@ -20,3 +20,11 @@ build_script:
     dotnet build
 
     dotnet pack
+deploy:
+- provider: NuGet
+  server: https://www.myget.org/F/jajo/api/v2/package
+  api_key:
+    secure: tzue+2xgeOeKXndBjAJcMot+aFlWLa4fcsAajvcnq3ogfA2Mwd5NZrgzNXuMkh4d
+  skip_symbols: true
+  on:
+    branch: master
