@@ -14,6 +14,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Build", "Build", "{878B6261-FD2A-49B7-AF0A-621CF1320926}"
 ProjectSection(SolutionItems) = preProject
 	..\.gitignore = ..\.gitignore
+	..\appveyor.yml = ..\appveyor.yml
 EndProjectSection
 EndProject
 Global

@@ -13,6 +13,8 @@ dotnet_csproj:
   informational_version: '{version}'
 build_script:
 - cmd: >-
+    cd src
+
     dotnet build
 
     dotnet pack
