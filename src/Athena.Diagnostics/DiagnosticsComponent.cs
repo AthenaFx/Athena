@@ -4,7 +4,6 @@ using System.Reactive.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Athena.Configuration;
-using Athena.FeatureFlags;
 using Athena.Logging;
 using Athena.PubSub;
 
@@ -15,19 +14,11 @@ namespace Athena.Diagnostics
         public AthenaBootstrapper Configure(AthenaBootstrapper bootstrapper)
         {
             return bootstrapper
-                .Features()
-                .Configure(x => x.WithDefaultFeature(bootstrapper.ApplicationName, new OnFeatureFlagCalculator())
-                    .WithDefaultFeature("diagnostics", new ForEnvironmentsFeatureFlagCalculator("dev", "test")))
                 .Part<DiagnosticsConfiguration>()
                 .On<ApplicationDefined>((conf, evnt, context) =>
                 {
                     Logger.Write(LogLevel.Debug, "Configuring diagnostics");
 
-                    bootstrapper
-                        .Features()
-                        .Configure(x => x.WithDefaultFeature($"metrics-{evnt.Name}",
-                            new OnFeatureFlagCalculator()));
-                    
                     return context.UpdateApplication(evnt.Name,
                         builder => builder.First("ReportErrorRate", 
                                 next => new ReportErrorRate(next, conf.HasError, conf.MetricsManager).Invoke)

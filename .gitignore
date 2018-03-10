@@ -3,6 +3,4 @@
 packages
 obj
 bin
-tools/FAKE
 NuGet
-.fake

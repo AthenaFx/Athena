@@ -2,7 +2,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Athena.FeatureFlags;
 
 namespace Athena.Diagnostics
 {
@@ -69,20 +68,10 @@ namespace Athena.Diagnostics
                 _inner = inner;
             }
 
-            public async Task AddDiagnostics(string application, string type, string step, DiagnosticsData data,
+            public Task AddDiagnostics(string application, string type, string step, DiagnosticsData data,
                 IDictionary<string, object> environment)
             {
-                var context = environment.GetAthenaContext();
-
-                var featureStore = context?.GetSetting<FeaturesSettings>()?.FeatureStore;
-
-                if (featureStore != null && !featureStore
-                        .IsOn($"diagnostics-{application}-{type}-{step}", environment))
-                {
-                    return;
-                }
-
-                await _inner.AddDiagnostics(application, type, step, data, environment).ConfigureAwait(false);
+                return _inner.AddDiagnostics(application, type, step, data, environment);
             }
 
             public Task<IEnumerable<string>> GetApplications()
@@ -116,51 +105,22 @@ namespace Athena.Diagnostics
                 _inner = inner;
             }
 
-            public async Task ReportMetricsTotalValue(string application, string key, double value, DateTime at,
+            public Task ReportMetricsTotalValue(string application, string key, double value, DateTime at,
                 IDictionary<string, object> environment)
             {
-                var context = environment.GetAthenaContext();
-
-                var featureStore = context?.GetSetting<FeaturesSettings>()?.FeatureStore;
-
-                if (featureStore != null && !featureStore.IsOn($"metrics-{application}-{key}", environment))
-                {
-                    return;
-                }
-
-                await _inner.ReportMetricsTotalValue(application, key, value, at, environment).ConfigureAwait(false);
+                return _inner.ReportMetricsTotalValue(application, key, value, at, environment);
             }
 
-            public async Task ReportMetricsPerSecondValue(string application, string key, double value, DateTime at,
+            public Task ReportMetricsPerSecondValue(string application, string key, double value, DateTime at,
                 IDictionary<string, object> environment)
             {
-                var context = environment.GetAthenaContext();
-
-                var featureStore = context?.GetSetting<FeaturesSettings>()?.FeatureStore;
-
-                if (featureStore != null && !featureStore.IsOn($"metrics-{application}-{key}", environment))
-                {
-                    return;
-                }
-
-                await _inner.ReportMetricsPerSecondValue(application, key, value, at, environment)
-                    .ConfigureAwait(false);
+                return _inner.ReportMetricsPerSecondValue(application, key, value, at, environment);
             }
 
-            public async Task ReportMetricsApdexValue(string application, string key, double value, DateTime at, 
+            public Task ReportMetricsApdexValue(string application, string key, double value, DateTime at, 
                 double tolerable, IDictionary<string, object> environment)
-            {
-                var context = environment.GetAthenaContext();
-
-                var featureStore = context?.GetSetting<FeaturesSettings>()?.FeatureStore;
-
-                if (featureStore != null && !featureStore.IsOn($"metrics-{application}-{key}", environment))
-                {
-                    return;
-                }
-                
-                await _inner.ReportMetricsApdexValue(application, key, value, at, tolerable, environment)
-                    .ConfigureAwait(false);
+            {                
+                return _inner.ReportMetricsApdexValue(application, key, value, at, tolerable, environment);
             }
 
             public Task<double> GetAverageFor(string application, string key)
