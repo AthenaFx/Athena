@@ -12,7 +12,7 @@ namespace Athena.Diagnostics.Web.Endpoints.Home
         {
             var steps = await context
                 .GetSetting<DiagnosticsConfiguration>()
-                .DataManager
+                .GetDiagnosticsDataManager()
                 .GetStepsFor(input.Slug, input.Id)
                 .ConfigureAwait(false);
             

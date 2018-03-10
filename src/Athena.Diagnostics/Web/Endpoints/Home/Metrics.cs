@@ -9,7 +9,7 @@ namespace Athena.Diagnostics.Web.Endpoints.Home
             var diagnosticsSettings = context.GetSetting<DiagnosticsConfiguration>();
 
             var average = await diagnosticsSettings
-                .MetricsManager
+                .GetMetricsDataManager()
                 .GetAverageFor(input.Slug, input.Id)
                 .ConfigureAwait(false);
             

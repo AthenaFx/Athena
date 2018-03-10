@@ -13,12 +13,12 @@ namespace Athena.Diagnostics.Web.Endpoints.Home
             var diagnosticsSettings = context.GetSetting<DiagnosticsConfiguration>();
             
             var types = await diagnosticsSettings
-                .DataManager
+                .GetDiagnosticsDataManager()
                 .GetTypesFor(input.Slug)
                 .ConfigureAwait(false);
 
             var metricKeys = await diagnosticsSettings
-                .MetricsManager
+                .GetMetricsDataManager()
                 .GetKeys(input.Slug)
                 .ConfigureAwait(false);
 

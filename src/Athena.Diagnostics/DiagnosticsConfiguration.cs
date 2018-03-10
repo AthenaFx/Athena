@@ -10,25 +10,25 @@ namespace Athena.Diagnostics
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, double>> _tolerableApdexValues = 
             new ConcurrentDictionary<string, ConcurrentDictionary<string, double>>();
 
-        public DiagnosticsDataManager DataManager { get; private set; } =
-            new DiagnosticsDataManagerWrapper(new InMemoryDiagnosticsDataManager());
+        private Func<IDictionary<string, object>, bool> _enabledCheck;
+
+        private DiagnosticsDataManager _dataManager = new InMemoryDiagnosticsDataManager();
         
-        public MetricsDataManager MetricsManager { get; private set; } = 
-            new MetricsDataManagerWrapper(new InMemoryMetricsDataManager(TimeSpan.FromDays(1)));
+        private MetricsDataManager _metricsManager = new InMemoryMetricsDataManager(TimeSpan.FromDays(1));
 
         public Func<IDictionary<string, object>, bool> HasError { get; private set; } =
             env => env.Get<Exception>("exception") != null;
 
         public DiagnosticsConfiguration UsingDataManager(DiagnosticsDataManager dataManager)
         {
-            DataManager = new DiagnosticsDataManagerWrapper(dataManager);
+            _dataManager = dataManager;
 
             return this;
         }
         
         public DiagnosticsConfiguration UsingMetricsDataManager(MetricsDataManager dataManager)
         {
-            MetricsManager = new MetricsDataManagerWrapper(dataManager);
+            _metricsManager = dataManager;
 
             return this;
         }
@@ -48,6 +48,23 @@ namespace Athena.Diagnostics
             return this;
         }
 
+        public DiagnosticsConfiguration EnabledWhen(Func<IDictionary<string, object>, bool> enabledCheck)
+        {
+            _enabledCheck = enabledCheck;
+
+            return this;
+        }
+
+        public DiagnosticsDataManager GetDiagnosticsDataManager()
+        {
+            return new DiagnosticsDataManagerWrapper(_dataManager, _enabledCheck ?? (_ => true));
+        }
+
+        public MetricsDataManager GetMetricsDataManager()
+        {
+            return new MetricsDataManagerWrapper(_metricsManager, _enabledCheck ?? (_ => true));
+        }
+
         internal double GetTolerableApdexValue(string application, string key)
         {
             if (!_tolerableApdexValues.ContainsKey(application))
@@ -62,15 +79,21 @@ namespace Athena.Diagnostics
         private class DiagnosticsDataManagerWrapper : DiagnosticsDataManager
         {
             private readonly DiagnosticsDataManager _inner;
+            private readonly Func<IDictionary<string, object>, bool> _enabledCheck;
 
-            public DiagnosticsDataManagerWrapper(DiagnosticsDataManager inner)
+            public DiagnosticsDataManagerWrapper(DiagnosticsDataManager inner, 
+                Func<IDictionary<string, object>, bool> enabledCheck)
             {
                 _inner = inner;
+                _enabledCheck = enabledCheck;
             }
 
             public Task AddDiagnostics(string application, string type, string step, DiagnosticsData data,
                 IDictionary<string, object> environment)
             {
+                if (!_enabledCheck(environment))
+                    return Task.CompletedTask;
+                
                 return _inner.AddDiagnostics(application, type, step, data, environment);
             }
 
@@ -99,27 +122,39 @@ namespace Athena.Diagnostics
         private class MetricsDataManagerWrapper : MetricsDataManager
         {
             private readonly MetricsDataManager _inner;
+            private readonly Func<IDictionary<string, object>, bool> _enabledCheck;
 
-            public MetricsDataManagerWrapper(MetricsDataManager inner)
+            public MetricsDataManagerWrapper(MetricsDataManager inner, 
+                Func<IDictionary<string, object>, bool> enabledCheck)
             {
                 _inner = inner;
+                _enabledCheck = enabledCheck;
             }
 
             public Task ReportMetricsTotalValue(string application, string key, double value, DateTime at,
                 IDictionary<string, object> environment)
             {
+                if (!_enabledCheck(environment))
+                    return Task.CompletedTask;
+                
                 return _inner.ReportMetricsTotalValue(application, key, value, at, environment);
             }
 
             public Task ReportMetricsPerSecondValue(string application, string key, double value, DateTime at,
                 IDictionary<string, object> environment)
             {
+                if (!_enabledCheck(environment))
+                    return Task.CompletedTask;
+                
                 return _inner.ReportMetricsPerSecondValue(application, key, value, at, environment);
             }
 
             public Task ReportMetricsApdexValue(string application, string key, double value, DateTime at, 
                 double tolerable, IDictionary<string, object> environment)
             {                
+                if (!_enabledCheck(environment))
+                    return Task.CompletedTask;
+                
                 return _inner.ReportMetricsApdexValue(application, key, value, at, tolerable, environment);
             }
 

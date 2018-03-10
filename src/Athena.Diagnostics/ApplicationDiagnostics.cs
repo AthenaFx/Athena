@@ -14,7 +14,8 @@ namespace Athena.Diagnostics
         public static DiagnosticsContext OpenDiagnosticsTimerContext(this DiagnosticsConfiguration settings, 
             IDictionary<string, object> environment, string step, string name)
         {
-            return new TimerDiagnosticsContext(settings.DataManager, settings.MetricsManager, environment, step, name);
+            return new TimerDiagnosticsContext(settings.GetDiagnosticsDataManager(), settings.GetMetricsDataManager(), 
+                environment, step, name);
         }
     }
 }

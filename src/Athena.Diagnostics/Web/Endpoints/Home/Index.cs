@@ -11,7 +11,7 @@ namespace Athena.Diagnostics.Web.Endpoints.Home
         {
             var applications = await context
                 .GetSetting<DiagnosticsConfiguration>()
-                .DataManager
+                .GetDiagnosticsDataManager()
                 .GetApplications()
                 .ConfigureAwait(false);
             

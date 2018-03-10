@@ -10,7 +10,7 @@ namespace Athena.Diagnostics.Web.Endpoints.Home
         public async Task<DataGetResult> Get(DataGetInput input, AthenaContext context)
         {
             var data = await context.GetSetting<DiagnosticsConfiguration>()
-                .DataManager
+                .GetDiagnosticsDataManager()
                 .GetDataFor(input.Slug, input.Id, input.Step)
                 .ConfigureAwait(false);
             
