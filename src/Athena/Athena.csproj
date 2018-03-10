@@ -2,7 +2,17 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <AssemblyName>Athena</AssemblyName>
-    <PackageId>Athena</PackageId>
+    <PackageId>AthenaFx</PackageId>
+    <Version>1.0.0</Version>
+    <PackageVersion>1.0.0</PackageVersion>
+    <AssemblyVersion>1.0.0</AssemblyVersion>
+    <FileVersion>1.0.0</FileVersion>
+    <InformationalVersion>1.0.0</InformationalVersion>
+    <Authors>Mattias Jakobsson</Authors>
+    <Description>Athena Fx</Description>
+    <PackageProjectUrl>https://github.com/AthenaFx/Athena</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/AthenaFx/Athena</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Threading.Tasks.Parallel" Version="4.3.0" />
